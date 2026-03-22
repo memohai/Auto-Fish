@@ -38,7 +38,7 @@ class AppControllerImpl
                 "dumpsys activity activities | grep -E 'topResumedActivity=|ResumedActivity:|mResumedActivity=' | head -1",
             ).trim()
             if (output.isNotBlank()) {
-                ACTIVITY_PATTERN.find(output)?.groupValues?.get(1) ?: output
+                parseTopActivityOutput(output)
             } else {
                 null
             }
@@ -100,6 +100,14 @@ class AppControllerImpl
 
         companion object {
             private const val TAG = "amctl:AppCtrl"
-            private val ACTIVITY_PATTERN = Regex("""\s(\S+/\S+)\s""")
+            private val ACTIVITY_PATTERN = Regex("""([A-Za-z0-9_.]+/[A-Za-z0-9_.$]+)""")
+
+            internal fun parseTopActivityOutput(output: String): String? {
+                val trimmed = output.trim()
+                if (trimmed.isBlank()) {
+                    return null
+                }
+                return ACTIVITY_PATTERN.find(trimmed)?.groupValues?.get(1)
+            }
         }
     }

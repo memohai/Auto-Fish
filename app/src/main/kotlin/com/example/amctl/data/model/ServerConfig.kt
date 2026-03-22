@@ -13,7 +13,7 @@ enum class AppThemeMode {
 
 data class ServerConfig(
     val port: Int = DEFAULT_MCP_PORT,
-    val bindingAddress: BindingAddress = BindingAddress.LOCALHOST,
+    val bindingAddress: BindingAddress = BindingAddress.ALL_INTERFACES,
     val bearerToken: String = "",
     val autoStartOnBoot: Boolean = false,
     val restPort: Int = DEFAULT_REST_PORT,

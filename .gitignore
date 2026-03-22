@@ -21,6 +21,6 @@ local.properties
 *.hprof
 *.log
 
-node_modules/
-dist/
+target/
+cli/target/
 .amctl-sessions/

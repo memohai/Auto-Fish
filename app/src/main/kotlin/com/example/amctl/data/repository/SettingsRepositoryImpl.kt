@@ -95,14 +95,15 @@ class SettingsRepositoryImpl
             }
 
         private fun mapPreferencesToServerConfig(prefs: Preferences): ServerConfig {
-            val bindingAddressName = prefs[BINDING_ADDRESS_KEY] ?: BindingAddress.LOCALHOST.name
+            val bindingAddressName = prefs[BINDING_ADDRESS_KEY] ?: BindingAddress.ALL_INTERFACES.name
             val appLanguageName = prefs[APP_LANGUAGE_KEY] ?: AppLanguage.SYSTEM.name
             val appThemeModeName = prefs[APP_THEME_MODE_KEY] ?: AppThemeMode.LIGHT.name
             return ServerConfig(
                 port = prefs[PORT_KEY] ?: ServerConfig.DEFAULT_MCP_PORT,
                 bindingAddress =
                     BindingAddress.entries.firstOrNull { it.name == bindingAddressName }
-                        ?: BindingAddress.LOCALHOST,
+                        ?.takeUnless { it == BindingAddress.LOCALHOST }
+                        ?: BindingAddress.ALL_INTERFACES,
                 bearerToken = prefs[BEARER_TOKEN_KEY] ?: "",
                 autoStartOnBoot = prefs[AUTO_START_KEY] ?: false,
                 restPort = prefs[REST_PORT_KEY] ?: ServerConfig.DEFAULT_REST_PORT,

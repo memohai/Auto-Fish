@@ -7,6 +7,6 @@ enum class BindingAddress(val address: String) {
 
     companion object {
         fun fromAddress(address: String): BindingAddress =
-            entries.firstOrNull { it.address == address } ?: LOCALHOST
+            entries.firstOrNull { it.address == address } ?: ALL_INTERFACES
     }
 }

@@ -16,7 +16,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,7 +24,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.amctl.data.model.BindingAddress
 import com.example.amctl.data.model.ServerConfig
 
 @Composable
@@ -33,7 +31,6 @@ fun ConfigurationSection(
     config: ServerConfig,
     isServerRunning: Boolean,
     onPortChange: (Int) -> Unit,
-    onBindingAddressChange: (BindingAddress) -> Unit,
     onRegenerateToken: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -54,27 +51,6 @@ fun ConfigurationSection(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-            )
-
-            Text("Who Can Connect", style = MaterialTheme.typography.labelLarge)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = config.bindingAddress == BindingAddress.LOCALHOST,
-                    onClick = { onBindingAddressChange(BindingAddress.LOCALHOST) },
-                    enabled = !isServerRunning,
-                )
-                Text("Only this device", modifier = Modifier.padding(end = 16.dp))
-                RadioButton(
-                    selected = config.bindingAddress == BindingAddress.ALL_INTERFACES,
-                    onClick = { onBindingAddressChange(BindingAddress.ALL_INTERFACES) },
-                    enabled = !isServerRunning,
-                )
-                Text("Allow LAN devices")
-            }
-            Text(
-                text = "Only this device = 127.0.0.1; Allow LAN devices = 0.0.0.0",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Text("Token", style = MaterialTheme.typography.labelLarge)

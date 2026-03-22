@@ -539,7 +539,6 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
                                 config = serverConfig,
                                 isServerRunning = isMcpRunning,
                                 onPortChange = viewModel::updatePort,
-                                onBindingAddressChange = viewModel::updateBindingAddress,
                                 onRegenerateToken = viewModel::generateNewBearerToken,
                             )
                             RestConfigurationSection(
