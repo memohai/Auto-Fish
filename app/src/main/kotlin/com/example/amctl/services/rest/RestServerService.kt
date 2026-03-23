@@ -137,8 +137,12 @@ class RestServerService : Service() {
     }
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(CHANNEL_ID, "amctl REST API", NotificationManager.IMPORTANCE_LOW).apply {
-            description = "REST API server foreground service"
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(com.example.amctl.R.string.service_channel_name),
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = getString(com.example.amctl.R.string.service_channel_desc)
         }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
@@ -146,7 +150,7 @@ class RestServerService : Service() {
     private fun buildNotification(): Notification =
         Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("amctl")
-            .setContentText("REST API server is running")
+            .setContentText(getString(com.example.amctl.R.string.service_running_notification))
             .setSmallIcon(android.R.drawable.ic_menu_manage)
             .setOngoing(true)
             .build()

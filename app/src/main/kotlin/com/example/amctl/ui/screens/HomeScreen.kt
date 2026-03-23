@@ -95,7 +95,6 @@ import com.example.amctl.data.model.AppThemeMode
 import com.example.amctl.data.model.ServerStatus
 import com.example.amctl.services.logging.ServiceLogBus
 import com.example.amctl.services.logging.ServiceLogEntry
-import com.example.amctl.ui.components.ConfigurationSection
 import com.example.amctl.ui.components.RestConfigurationSection
 import com.example.amctl.ui.components.ServerStatusCard
 import com.example.amctl.ui.viewmodels.MainViewModel
@@ -108,14 +107,13 @@ import java.util.Locale
 @Composable
 fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
     val serverConfig by viewModel.serverConfig.collectAsState()
-    val serverStatus by viewModel.serverStatus.collectAsState()
     val restServerStatus by viewModel.restServerStatus.collectAsState()
+    val deviceIp by viewModel.deviceIp.collectAsState()
     val shizukuStatus by viewModel.shizukuStatus.collectAsState()
     val controlMode by viewModel.controlMode.collectAsState()
     val accessibilityEnabled by viewModel.accessibilityEnabled.collectAsState()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
     val context = LocalContext.current
-    val isMcpRunning = serverStatus is ServerStatus.Running
     val isRestRunning = restServerStatus is ServerStatus.Running
     var selectedTab by rememberSaveable { mutableStateOf(UiTab.Home) }
     var selectedSettingPage by rememberSaveable { mutableStateOf(SettingPage.Menu) }
@@ -159,6 +157,7 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
     }
 
     LaunchedEffect(Unit) {
+        viewModel.refreshDeviceIp()
         logs.clear()
         logs.addAll(ServiceLogBus.snapshot())
         ServiceLogBus.events.collect { entry ->
@@ -167,6 +166,11 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
             } else {
                 logs.add(entry)
             }
+        }
+    }
+    LaunchedEffect(isRestRunning) {
+        if (isRestRunning) {
+            viewModel.refreshDeviceIp()
         }
     }
 
@@ -322,19 +326,41 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     ServerStatusCard(
-                        title = stringResource(R.string.mcp_server),
-                        serverStatus = serverStatus,
-                        onToggle = { enabled ->
-                            if (enabled) viewModel.startServer() else viewModel.stopServer()
-                        },
-                    )
-                    ServerStatusCard(
                         title = stringResource(R.string.rest_api_server),
                         serverStatus = restServerStatus,
                         onToggle = { enabled ->
                             if (enabled) viewModel.startRestServer() else viewModel.stopRestServer()
                         },
                     )
+                    if (isRestRunning) {
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.connection_info),
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                                Text(
+                                    text = stringResource(
+                                        R.string.device_ip_format,
+                                        deviceIp ?: stringResource(R.string.unknown),
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Text(
+                                    text = stringResource(
+                                        R.string.service_addr_format,
+                                        deviceIp ?: stringResource(R.string.unknown),
+                                        serverConfig.restPort,
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -399,7 +425,7 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
                     searchQuery = logSearchQuery,
                     onSearchQueryChange = { logSearchQuery = it },
                     levelFilter = logLevelFilter,
-                    hasRunningService = isMcpRunning || isRestRunning,
+                    hasRunningService = isRestRunning,
                 )
             }
 
@@ -535,12 +561,6 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            )
-                            ConfigurationSection(
-                                config = serverConfig,
-                                isServerRunning = isMcpRunning,
-                                onPortChange = viewModel::updatePort,
-                                onRegenerateToken = viewModel::generateNewBearerToken,
                             )
                             RestConfigurationSection(
                                 config = serverConfig,

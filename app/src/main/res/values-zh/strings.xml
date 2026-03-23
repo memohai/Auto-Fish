@@ -25,7 +25,7 @@
     <string name="build_type_label">构建类型</string>
     <string name="install_date_label">安装日期</string>
     <string name="mcp_server">MCP 服务</string>
-    <string name="rest_api_server">REST API 服务</string>
+    <string name="rest_api_server">服务</string>
     <string name="overlay_visible">Overlay 可见</string>
     <string name="overlay_visible_desc">显示或隐藏服务端在屏幕上的 UI 标注层。</string>
     <string name="control_mode">控制模式</string>
@@ -36,6 +36,7 @@
     <string name="connection_info">连接信息</string>
     <string name="unknown">未知</string>
     <string name="device_ip_format">设备 IP：%1$s</string>
+    <string name="service_addr_format">服务地址：http://%1$s:%2$d</string>
     <string name="mcp_info_format">MCP：端口 %1$d，令牌 %2$s...</string>
     <string name="rest_info_format">REST：端口 %1$d，令牌 %2$s...</string>
     <string name="server_stopped">已停止</string>
@@ -61,4 +62,13 @@
     <string name="log_level_warn">警告</string>
     <string name="log_level_error">错误</string>
     <string name="service_not_started">服务未启动</string>
+    <string name="service_settings">服务设置</string>
+    <string name="service_channel_name">amctl 服务</string>
+    <string name="service_channel_desc">服务前台进程</string>
+    <string name="service_running_notification">服务运行中</string>
+    <string name="port_label">端口</string>
+    <string name="token_label">令牌</string>
+    <string name="not_generated">未生成</string>
+    <string name="copy_token">复制令牌</string>
+    <string name="regenerate_token">重新生成令牌</string>
 </resources>

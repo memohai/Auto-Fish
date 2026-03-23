@@ -9,8 +9,37 @@ plugins {
     alias(libs.plugins.detekt)
 }
 
-val versionNameProp = project.findProperty("VERSION_NAME") as String? ?: "0.1.0"
-val versionCodeProp = (project.findProperty("VERSION_CODE") as String?)?.toInt() ?: 1
+fun Project.gitOutputOrNull(vararg args: String): String? =
+    runCatching {
+        val execOutput = providers.exec {
+            commandLine("git", *args)
+        }
+        val result = execOutput.result.get()
+        if (result.exitValue == 0) {
+            execOutput.standardOutput.asText.get().trim().ifBlank { null }
+        } else {
+            null
+        }
+    }.getOrNull()
+
+val gitShortSha = project.gitOutputOrNull("rev-parse", "--short", "HEAD")
+val gitCommitCount = project.gitOutputOrNull("rev-list", "--count", "HEAD")?.toIntOrNull()
+
+val rawVersionNameProp = project.findProperty("VERSION_NAME") as String?
+val rawVersionCodeProp = (project.findProperty("VERSION_CODE") as String?)?.toIntOrNull()
+val useGitVersionFallback = rawVersionNameProp == null || rawVersionNameProp == "0.1.0" ||
+    rawVersionCodeProp == null || rawVersionCodeProp == 1
+
+val versionNameProp = if (useGitVersionFallback) {
+    "0.1.0-dev${gitShortSha?.let { "+$it" } ?: ""}"
+} else {
+    rawVersionNameProp!!
+}
+val versionCodeProp = if (useGitVersionFallback) {
+    gitCommitCount ?: 1
+} else {
+    rawVersionCodeProp!!
+}
 
 android {
     namespace = "com.example.amctl"
