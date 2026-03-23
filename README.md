@@ -83,24 +83,6 @@ Notes:
 - `--token` is required for protected commands unless `AMC_TOKEN` is set.
 - Command output is JSON (single line per command).
 
-## Troubleshooting
-
-### Service not reachable
-
-- Confirm device and host are on the same network.
-- Confirm app shows service status as running.
-- Confirm `AMC_URL` uses the device IP shown in app.
-
-### Unauthorized / auth errors
-
-- Confirm `AMC_TOKEN` matches the token shown in app.
-- Regenerate token in app and update local env vars.
-
-### Accessibility-related failures
-
-- Re-check accessibility permission in Android settings.
-- Re-open app and verify service is still running.
-
 ## For developers
 
 ```bash
