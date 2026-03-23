@@ -3,6 +3,13 @@ name = "amc"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+
 [dependencies]
 chrono = { version = "0.4.42", default-features = false, features = ["clock"] }
 clap = { version = "4.5.48", features = ["derive", "env"] }
