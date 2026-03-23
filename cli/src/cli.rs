@@ -2,6 +2,16 @@ use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
 
+fn parse_non_negative_f32(v: &str) -> Result<f32, String> {
+    let parsed = v
+        .parse::<f32>()
+        .map_err(|_| format!("invalid float value: {v}"))?;
+    if parsed < 0.0 {
+        return Err(format!("value must be >= 0, got {parsed}"));
+    }
+    Ok(parsed)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ProxyMode {
     System,
@@ -70,22 +80,30 @@ pub enum Commands {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum ActCommands {
-    #[command(name = "tap")]
+    #[command(
+        name = "tap",
+        about = "Tap at screen coordinates",
+        long_about = "Tap at screen coordinates.\n\nCoordinates must be non-negative."
+    )]
     Tap {
-        #[arg(long)]
+        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
         x: f32,
-        #[arg(long)]
+        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
         y: f32,
     },
-    #[command(name = "swipe")]
+    #[command(
+        name = "swipe",
+        about = "Swipe from (x1,y1) to (x2,y2)",
+        long_about = "Swipe from (x1,y1) to (x2,y2).\n\nCoordinates must be non-negative."
+    )]
     Swipe {
-        #[arg(long)]
+        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
         x1: f32,
-        #[arg(long)]
+        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
         y1: f32,
-        #[arg(long)]
+        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
         x2: f32,
-        #[arg(long)]
+        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
         y2: f32,
         #[arg(long, default_value_t = 300)]
         duration: i64,
@@ -104,7 +122,11 @@ pub enum ActCommands {
         #[arg(long = "package")]
         package_name: String,
     },
-    #[command(name = "stop")]
+    #[command(
+        name = "stop",
+        about = "Stop an app by package name",
+        long_about = "Stop (force-stop) an app by package name."
+    )]
     Stop {
         #[arg(long = "package")]
         package_name: String,
@@ -131,7 +153,11 @@ pub enum ObserveCommands {
         #[arg(long, default_value = "id,class,text,desc,resId,flags")]
         fields: String,
     },
-    #[command(name = "screenshot")]
+    #[command(
+        name = "screenshot",
+        about = "Capture a compressed screenshot",
+        long_about = "Capture a compressed screenshot.\n\n`max-dim` limits the long edge of the image.\n`quality` is JPEG quality from 1 to 100 (higher = bigger file).\nThis command does not support `--full`."
+    )]
     Screenshot {
         #[arg(long = "max-dim", default_value_t = 700)]
         max_dim: i64,
@@ -160,8 +186,8 @@ pub enum VerifyCommands {
     },
     #[command(
         name = "node-exists",
-        about = "Verify a node exists by id/text/desc/class/resource_id",
-        long_about = "Verify a node exists by id/text/desc/class/resource_id.\n\nIf the screen is WebView-heavy (`hasWebView=true` or `nodeReliability=low`), prefer `verify text-contains` first."
+        about = "Verify a node exists by text/content_desc/resource_id/class_name",
+        long_about = "Verify a node exists by text/content_desc/resource_id/class_name.\n\nAliases: `desc` -> `content_desc`, `class` -> `class_name`.\nIf the screen is WebView-heavy (`hasWebView=true` or `nodeReliability=low`), prefer `verify text-contains` first."
     )]
     NodeExists {
         #[arg(long)]

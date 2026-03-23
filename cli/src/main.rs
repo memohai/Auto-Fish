@@ -506,14 +506,18 @@ fn handle_verify_node_exists(
     exact_match: bool,
 ) -> CommandResult {
     let by_norm = by.to_lowercase();
-    let valid = ["id", "text", "desc", "class", "resource_id"];
-    if !valid.contains(&by_norm.as_str()) {
-        return Err(CommandError::invalid_params(
-            "by must be one of: id,text,desc,class,resource_id",
-        ));
-    }
+    let by_api = match by_norm.as_str() {
+        "text" | "resource_id" | "content_desc" | "class_name" => by_norm.clone(),
+        "desc" => "content_desc".to_string(),
+        "class" => "class_name".to_string(),
+        _ => {
+            return Err(CommandError::invalid_params(
+                "by must be one of: text,content_desc,resource_id,class_name (aliases: desc,class)",
+            ));
+        }
+    };
     let found = api
-        .nodes_find(&by_norm, value, exact_match)
+        .nodes_find(&by_api, value, exact_match)
         .map_err(CommandError::from)?;
     if !found.has_match {
         let screen_meta = api.screen().ok().map(|screen| {
@@ -539,6 +543,7 @@ fn handle_verify_node_exists(
             json!({
                 "check": "node_exists",
                 "by": by,
+                "byNormalized": by_api,
                 "value": value,
                 "exactMatch": exact_match,
                 "matched": false,
@@ -551,7 +556,7 @@ fn handle_verify_node_exists(
         ));
     }
     Ok(
-        json!({"matched": true, "by": by, "value": value, "exactMatch": exact_match, "matchedCount": found.matched_count, "nodes": found.nodes, "raw": found.raw}),
+        json!({"matched": true, "by": by, "byNormalized": by_api, "value": value, "exactMatch": exact_match, "matchedCount": found.matched_count, "nodes": found.nodes, "raw": found.raw}),
     )
 }
 
