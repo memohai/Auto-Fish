@@ -111,17 +111,18 @@ fn run_command(
                 "tap",
                 handle_act_tap(&api, *x, *y),
             ),
-            ActCommands::Swipe {
-                x1,
-                y1,
-                x2,
-                y2,
-                duration,
-            } => into_output(
+            ActCommands::Swipe { coords, duration } => into_output(
                 &runtime.session_id,
                 "act",
                 "swipe",
-                handle_act_swipe(&api, *x1, *y1, *x2, *y2, *duration),
+                handle_act_swipe(
+                    &api,
+                    coords[0],
+                    coords[1],
+                    coords[2],
+                    coords[3],
+                    *duration,
+                ),
             ),
             ActCommands::Back => {
                 into_output(&runtime.session_id, "act", "back", handle_act_back(&api))

@@ -23,6 +23,7 @@ export AMC_DB="./amc.db"
 ./target/release/amc health
 ./target/release/amc observe screen --max-rows 80 --fields id,text,desc,resId,flags
 ./target/release/amc act tap --x 540 --y 1200
+./target/release/amc act swipe 100,1200,900,1200 --duration 300
 ```
 
 ### Option B: explicit flags

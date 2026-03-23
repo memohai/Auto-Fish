@@ -12,6 +12,20 @@ fn parse_non_negative_f32(v: &str) -> Result<f32, String> {
     Ok(parsed)
 }
 
+fn parse_non_negative_points4(v: &str) -> Result<[f32; 4], String> {
+    let parts = v.split(',').map(str::trim).collect::<Vec<_>>();
+    if parts.len() != 4 {
+        return Err(format!(
+            "points must contain exactly 4 comma-separated values: x1,y1,x2,y2; got '{v}'"
+        ));
+    }
+    let x1 = parse_non_negative_f32(parts[0])?;
+    let y1 = parse_non_negative_f32(parts[1])?;
+    let x2 = parse_non_negative_f32(parts[2])?;
+    let y2 = parse_non_negative_f32(parts[3])?;
+    Ok([x1, y1, x2, y2])
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ProxyMode {
     System,
@@ -93,31 +107,42 @@ pub enum ActCommands {
     },
     #[command(
         name = "swipe",
-        about = "Swipe from (x1,y1) to (x2,y2)",
-        long_about = "Swipe from (x1,y1) to (x2,y2).\n\nCoordinates must be non-negative."
+        about = "Swipe from (x1,y1) to (x2,y2), with optional duration in ms",
+        long_about = "Swipe from (x1,y1) to (x2,y2).\n\nUse positional tuple `x1,y1,x2,y2`.\nAll coordinates must be non-negative.\n`--duration` is in milliseconds (ms), default is 300."
     )]
     Swipe {
-        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
-        x1: f32,
-        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
-        y1: f32,
-        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
-        x2: f32,
-        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
-        y2: f32,
+        #[arg(value_name = "x1,y1,x2,y2", value_parser = parse_non_negative_points4)]
+        coords: [f32; 4],
+        /// Swipe duration in milliseconds (ms)
         #[arg(long, default_value_t = 300)]
         duration: i64,
     },
-    #[command(name = "back")]
+    #[command(
+        name = "back",
+        about = "Press Android Back",
+        long_about = "Press Android Back once."
+    )]
     Back,
-    #[command(name = "home")]
+    #[command(
+        name = "home",
+        about = "Press Android Home",
+        long_about = "Press Android Home once."
+    )]
     Home,
-    #[command(name = "text")]
+    #[command(
+        name = "text",
+        about = "Input text",
+        long_about = "Input text to the current focused field."
+    )]
     Text {
         #[arg(long)]
         text: String,
     },
-    #[command(name = "launch")]
+    #[command(
+        name = "launch",
+        about = "Launch an app by package name",
+        long_about = "Launch an app by package name."
+    )]
     Launch {
         #[arg(long = "package")]
         package_name: String,
@@ -131,7 +156,11 @@ pub enum ActCommands {
         #[arg(long = "package")]
         package_name: String,
     },
-    #[command(name = "key")]
+    #[command(
+        name = "key",
+        about = "Press a key by Android key code",
+        long_about = "Press a key by Android key code."
+    )]
     Key {
         #[arg(long = "key-code")]
         key_code: i32,

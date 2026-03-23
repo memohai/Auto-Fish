@@ -58,6 +58,7 @@ export AMC_DB="./amc.db"
 
 ```bash
 amc observe screenshot --annotate --max-marks 120
+amc act swipe 100,1200,900,1200 --duration 300
 amc verify text-contains --text "设置"
 amc verify node-exists --by text --value "设置"
 amc recover back --times 2
