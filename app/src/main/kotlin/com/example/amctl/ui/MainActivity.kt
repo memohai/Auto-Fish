@@ -17,7 +17,10 @@ import com.example.amctl.ui.screens.HomeScreen
 import com.example.amctl.ui.theme.AmctlTheme
 import com.example.amctl.ui.viewmodels.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -26,14 +29,26 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val initialThemeMode = runBlocking {
+            settingsRepository.serverConfig.first().appThemeMode
+        }
+        AppCompatDelegate.setDefaultNightMode(
+            if (initialThemeMode == AppThemeMode.DARK) {
+                AppCompatDelegate.MODE_NIGHT_YES
+            } else {
+                AppCompatDelegate.MODE_NIGHT_NO
+            },
+        )
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
         setContent {
-            val serverConfig by viewModel.serverConfig.collectAsState()
+            val appThemeMode by viewModel.serverConfig
+                .map { it.appThemeMode }
+                .collectAsState(initial = initialThemeMode)
 
             AmctlTheme(
-                darkTheme = serverConfig.appThemeMode == AppThemeMode.DARK,
+                darkTheme = appThemeMode == AppThemeMode.DARK,
                 dynamicColor = false,
             ) {
                 HomeScreen()
