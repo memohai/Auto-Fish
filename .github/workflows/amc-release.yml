@@ -78,7 +78,7 @@ jobs:
           set -euo pipefail
           test -f "skills/android-stepwise-control/SKILL.md"
           VERSION="${GITHUB_REF_NAME:-amc-dev}"
-          ARCHIVE="amc-${VERSION}-${{ matrix.target }}.tar.gz"
+          ARCHIVE="${VERSION}-${{ matrix.target }}.tar.gz"
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/${{ matrix.bin_name }}" "dist/${{ matrix.bin_name }}"
           cp "skills/android-stepwise-control/SKILL.md" dist/SKILL.md
@@ -93,7 +93,7 @@ jobs:
         run: |
           if (-Not (Test-Path "skills/android-stepwise-control/SKILL.md")) { throw "SKILL.md not found" }
           $Version = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { "amc-dev" }
-          $Archive = "amc-$Version-${{ matrix.target }}.zip"
+          $Archive = "$Version-${{ matrix.target }}.zip"
           New-Item -ItemType Directory -Path dist | Out-Null
           Copy-Item "target/${{ matrix.target }}/release/${{ matrix.bin_name }}" "dist/${{ matrix.bin_name }}"
           Copy-Item "skills/android-stepwise-control/SKILL.md" "dist/SKILL.md"
@@ -106,7 +106,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: amc-${{ matrix.target }}
-          path: cli/amc-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.ext }}
+          path: cli/${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.ext }}
           if-no-files-found: error
 
   release:
