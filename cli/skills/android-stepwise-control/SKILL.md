@@ -1,4 +1,4 @@
-# Android Control Zen (for `amc`)
+# Android Control Zen (for `af`)
 
 Assume less. Observe more.  
 One action, one check.  
@@ -9,12 +9,12 @@ Failure is normal; blind execution is not.
 ## Environment
 Prefer env vars instead of repeating flags:
 ```bash
-export AMC_URL="http://<host>:9998"
-export AMC_TOKEN="<token>"
-export AMC_DB="./amc.db"
+export AF_URL="http://<host>:9998"
+export AF_TOKEN="<token>"
+export AF_DB="./af.db"
 ```
-`AMC_URL` is required. If it is missing, commands fail before execution.
-`AMC_TOKEN` is required for protected API calls.
+`AF_URL` is required. If it is missing, commands fail before execution.
+`AF_TOKEN` is required for protected API calls.
 
 ## 0. Opening Move (Environment First)
 Always start with:
@@ -61,17 +61,17 @@ If `verify node-exists` fails, inspect `error.details.hint` and `error.details.s
 ## 6. Minimal Template
 ```bash
 # action
-amc <command>
+af <command>
 # observe
-amc observe top
-amc observe screen --fields id,text,desc --max-rows 80
+af observe top
+af observe screen --fields id,text,desc --max-rows 80
 # overlay on (server-side on-screen labels)
-amc observe overlay --enabled true --max-marks 300 --interactive-only false --auto-refresh true --refresh-interval-ms 800 --offset-x 0 --offset-y 0
+af observe overlay --enabled true --max-marks 300 --interactive-only false --auto-refresh true --refresh-interval-ms 800 --offset-x 0 --offset-y 0
 # verify
-amc verify text-contains "Bing"
-amc verify node-exists --by text --value "Bing"
+af verify text-contains "Bing"
+af verify node-exists --by text --value "Bing"
 # overlay off
-amc observe overlay --enabled false
+af observe overlay --enabled false
 ```
 
 ## 7. Overlay Color Legend

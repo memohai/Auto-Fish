@@ -15,22 +15,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "amc"
-version = "0.1.1-rc.1"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "crossbeam-channel",
- "ctrlc",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "uuid",
-]
-
-[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -100,6 +84,22 @@ name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
+
+[[package]]
+name = "auto-fish-cli"
+version = "0.1.1-rc.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "crossbeam-channel",
+ "ctrlc",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "uuid",
+]
 
 [[package]]
 name = "autocfg"

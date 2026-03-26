@@ -34,12 +34,12 @@ pub enum ProxyMode {
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "amc", about = "Deterministic executor for amctl REST API")]
+#[command(name = "af", about = "Deterministic executor for Auto Fish REST API")]
 pub struct Cli {
-    #[arg(long, env = "AMC_URL")]
+    #[arg(long, env = "AF_URL")]
     pub url: String,
 
-    #[arg(long, env = "AMC_TOKEN")]
+    #[arg(long, env = "AF_TOKEN")]
     pub token: Option<String>,
 
     #[arg(long, default_value_t = 10000)]
@@ -53,8 +53,8 @@ pub struct Cli {
 
     #[arg(
         long,
-        env = "AMC_DB",
-        default_value = "amc.db",
+        env = "AF_DB",
+        default_value = "af.db",
         value_hint = clap::ValueHint::FilePath
     )]
     pub trace_db: PathBuf,

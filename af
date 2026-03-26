@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -x "$ROOT_DIR/cli/target/release/af" ]; then
+  exec "$ROOT_DIR/cli/target/release/af" "$@"
+fi
+
+if [ -x "$ROOT_DIR/cli/target/debug/af" ]; then
+  exec "$ROOT_DIR/cli/target/debug/af" "$@"
+fi
+
+exec cargo run --manifest-path "$ROOT_DIR/cli/Cargo.toml" -- "$@"

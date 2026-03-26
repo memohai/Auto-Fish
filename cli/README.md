@@ -1,6 +1,6 @@
-# amc CLI (Rust)
+# af CLI (Rust)
 
-`amc` is the deterministic CLI executor for the amctl REST service.
+`af` is the deterministic CLI executor for the Auto Fish REST service.
 
 ## Build
 
@@ -16,21 +16,21 @@ You can pass connection settings via flags or environment variables.
 ### Option A: environment variables
 
 ```bash
-export AMC_URL="http://127.0.0.1:8081"
-export AMC_TOKEN="<token>"
-export AMC_DB="./amc.db"
+export AF_URL="http://127.0.0.1:8081"
+export AF_TOKEN="<token>"
+export AF_DB="./af.db"
 
-./target/release/amc health
-./target/release/amc observe screen --max-rows 80 --fields id,text,desc,resId,flags
-./target/release/amc act tap --x 540 --y 1200
-./target/release/amc act swipe 100,1200,900,1200 --duration 300
+./target/release/af health
+./target/release/af observe screen --max-rows 80 --fields id,text,desc,resId,flags
+./target/release/af act tap --x 540 --y 1200
+./target/release/af act swipe 100,1200,900,1200 --duration 300
 ```
 
 ### Option B: explicit flags
 
 ```bash
-./target/release/amc --url http://127.0.0.1:8081 --token "<token>" health
-./target/release/amc --url http://127.0.0.1:8081 --token "<token>" observe top
+./target/release/af --url http://127.0.0.1:8081 --token "<token>" health
+./target/release/af --url http://127.0.0.1:8081 --token "<token>" observe top
 ```
 
 ## Command groups
@@ -55,10 +55,10 @@ Each command prints one JSON line.
 
 ## Common options
 
-- `--url <URL>` (or `AMC_URL`)
-- `--token <TOKEN>` (or `AMC_TOKEN`)
+- `--url <URL>` (or `AF_URL`)
+- `--token <TOKEN>` (or `AF_TOKEN`)
 - `--timeout-ms <MS>`
 - `--proxy <system|direct|auto>`
-- `--trace-db <PATH>` (or `AMC_DB`)
+- `--trace-db <PATH>` (or `AF_DB`)
 - `--no-trace`
 - `--session <NAME>`
