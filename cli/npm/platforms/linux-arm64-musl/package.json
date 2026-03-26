@@ -1,0 +1,13 @@
+{
+  "name": "@memohai/af-linux-arm64-musl",
+  "version": "__VERSION__",
+  "description": "Auto Fish CLI binary for linux arm64 musl",
+  "license": "Apache-2.0",
+  "os": ["linux"],
+  "cpu": ["arm64"],
+  "libc": ["musl"],
+  "files": ["bin/af"],
+  "publishConfig": {
+    "access": "public"
+  }
+}

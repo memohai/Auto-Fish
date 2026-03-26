@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: build-${{ matrix.target }}
@@ -124,3 +127,110 @@ jobs:
         with:
           generate_release_notes: true
           files: artifacts/**/*
+
+  npm-publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Prepare npm packages from release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#cli-v}"
+          if [[ "$VERSION" == "$GITHUB_REF_NAME" ]]; then
+            echo "Expected tag format cli-v<version>, got: $GITHUB_REF_NAME"
+            exit 1
+          fi
+          DIST_TAG="latest"
+          if [[ "$VERSION" == *"-rc."* ]] || [[ "$VERSION" == *"-rc"* ]]; then
+            DIST_TAG="rc"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "DIST_TAG=$DIST_TAG" >> "$GITHUB_ENV"
+
+          WORKROOT="$RUNNER_TEMP/af-npm"
+          rm -rf "$WORKROOT"
+          mkdir -p "$WORKROOT/platforms"
+          cp -R cli/npm/meta "$WORKROOT/meta"
+          cp -R cli/npm/platforms/. "$WORKROOT/platforms"
+          find "$WORKROOT" -name package.json -type f -exec sed -i "s/__VERSION__/$VERSION/g" {} +
+
+          extract_binary() {
+            local target="$1"
+            local outdir="$2"
+            local bin_name="$3"
+            local archive
+            archive="$(find artifacts -type f -name "${GITHUB_REF_NAME}-${target}.*" | head -n1)"
+            if [[ -z "$archive" ]]; then
+              echo "Artifact for target '$target' not found"
+              exit 1
+            fi
+            local tmp
+            tmp="$(mktemp -d)"
+            case "$archive" in
+              *.tar.gz) tar -xzf "$archive" -C "$tmp" ;;
+              *.zip) unzip -q "$archive" -d "$tmp" ;;
+              *)
+                echo "Unsupported archive type: $archive"
+                exit 1
+                ;;
+            esac
+            cp "$tmp/$bin_name" "$outdir/$bin_name"
+            rm -rf "$tmp"
+          }
+
+          extract_binary "x86_64-unknown-linux-musl" "$WORKROOT/platforms/linux-x64-musl/bin" "af"
+          extract_binary "aarch64-unknown-linux-musl" "$WORKROOT/platforms/linux-arm64-musl/bin" "af"
+          extract_binary "x86_64-apple-darwin" "$WORKROOT/platforms/darwin-x64/bin" "af"
+          extract_binary "aarch64-apple-darwin" "$WORKROOT/platforms/darwin-arm64/bin" "af"
+          extract_binary "x86_64-pc-windows-msvc" "$WORKROOT/platforms/win32-x64-msvc/bin" "af.exe"
+
+          chmod +x "$WORKROOT/platforms/linux-x64-musl/bin/af" \
+            "$WORKROOT/platforms/linux-arm64-musl/bin/af" \
+            "$WORKROOT/platforms/darwin-x64/bin/af" \
+            "$WORKROOT/platforms/darwin-arm64/bin/af"
+
+          echo "WORKROOT=$WORKROOT" >> "$GITHUB_ENV"
+
+      - name: Publish platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for pkg in \
+            linux-x64-musl \
+            linux-arm64-musl \
+            darwin-x64 \
+            darwin-arm64 \
+            win32-x64-msvc
+          do
+            echo "Publishing @memohai/af-$pkg@$VERSION ($DIST_TAG)"
+            (cd "$WORKROOT/platforms/$pkg" && npm publish --access public --tag "$DIST_TAG")
+          done
+
+      - name: Publish meta package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Publishing @memohai/af@$VERSION ($DIST_TAG)"
+          (cd "$WORKROOT/meta" && npm publish --access public --tag "$DIST_TAG")

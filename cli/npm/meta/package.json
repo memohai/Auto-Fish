@@ -1,0 +1,38 @@
+{
+  "name": "@memohai/af",
+  "version": "__VERSION__",
+  "description": "Auto Fish CLI",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/memohai/Auto-Fish.git"
+  },
+  "homepage": "https://github.com/memohai/Auto-Fish",
+  "bugs": {
+    "url": "https://github.com/memohai/Auto-Fish/issues"
+  },
+  "bin": {
+    "af": "bin/af.js"
+  },
+  "files": [
+    "bin/af.js",
+    "README.md"
+  ],
+  "keywords": [
+    "android",
+    "automation",
+    "cli",
+    "agent",
+    "llm"
+  ],
+  "optionalDependencies": {
+    "@memohai/af-linux-x64-musl": "__VERSION__",
+    "@memohai/af-linux-arm64-musl": "__VERSION__",
+    "@memohai/af-darwin-x64": "__VERSION__",
+    "@memohai/af-darwin-arm64": "__VERSION__",
+    "@memohai/af-win32-x64-msvc": "__VERSION__"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

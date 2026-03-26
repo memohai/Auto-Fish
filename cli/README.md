@@ -9,6 +9,24 @@ cd cli
 cargo build --release
 ```
 
+## Install from npm
+
+```bash
+# rc channel
+npm i -g @memohai/af@rc
+
+# stable channel
+npm i -g @memohai/af
+```
+
+Then run:
+
+```bash
+af --help
+```
+
+Note: Linux npm binaries are currently published for musl targets.
+
 ## Run
 
 You can pass connection settings via flags or environment variables.
