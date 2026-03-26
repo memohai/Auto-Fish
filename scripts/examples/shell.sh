@@ -19,5 +19,5 @@ curl -s -X POST "${MCP_BASE}/mcp" \
         \"jsonrpc\": \"2.0\",
         \"id\": 14,
         \"method\": \"tools/call\",
-        \"params\": { \"name\": \"amctl_shell\", \"arguments\": { \"command\": ${ESCAPED_CMD} } }
+        \"params\": { \"name\": \"autofish_shell\", \"arguments\": { \"command\": ${ESCAPED_CMD} } }
     }" | python3 -m json.tool

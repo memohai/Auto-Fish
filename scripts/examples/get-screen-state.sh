@@ -15,5 +15,5 @@ curl -s -X POST "${MCP_BASE}/mcp" \
         "jsonrpc": "2.0",
         "id": 10,
         "method": "tools/call",
-        "params": { "name": "amctl_get_screen_state", "arguments": {} }
+        "params": { "name": "autofish_get_screen_state", "arguments": {} }
     }' | python3 -m json.tool

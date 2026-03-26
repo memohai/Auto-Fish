@@ -20,7 +20,7 @@ curl -s -X POST "${MCP_BASE}/mcp" \
         \"id\": 15,
         \"method\": \"tools/call\",
         \"params\": {
-            \"name\": \"amctl_start_intent\",
+            \"name\": \"autofish_start_intent\",
             \"arguments\": { \"action\": \"${ACTION}\", \"data\": \"${DATA}\" }
         }
     }" | python3 -m json.tool

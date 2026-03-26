@@ -1,8 +1,8 @@
-# amctl
+# Auto Fish
 
 English | [中文](./README_ZH.md)
 
-amctl is an Android device control service with a deterministic CLI client (`amc`).
+Auto Fish is an Android device control service with a deterministic CLI client (`af`).
 
 ## Build from source requirements
 
@@ -25,7 +25,7 @@ Recommended environment:
 
 Install the APK, open the app, then do the following:
 
-1. Enable accessibility permission for amctl.
+1. Enable accessibility permission for Auto Fish.
 2. In Home page, turn on **Service**.
 3. Note the service connection info shown in app:
    - Device IP
@@ -41,7 +41,7 @@ just install
 
 Then follow the same 3 steps above.
 
-### 2) Install and use `amc` CLI
+### 2) Install and use `af` CLI
 
 Build from source:
 
@@ -53,34 +53,34 @@ cargo build --release
 Set environment variables (replace with your actual values):
 
 ```bash
-export AMC_URL="http://<DEVICE_IP>:<PORT>"
-export AMC_TOKEN="<TOKEN>"
-export AMC_DB="./amc.db"
+export AF_URL="http://<DEVICE_IP>:<PORT>"
+export AF_TOKEN="<TOKEN>"
+export AF_DB="./af.db"
 ```
 
 Run first commands:
 
 ```bash
-./target/release/amc health
-./target/release/amc observe top
-./target/release/amc observe screen --max-rows 80 --fields id,text,desc,resId,flags
-./target/release/amc act tap --x 540 --y 1200
+./target/release/af health
+./target/release/af observe top
+./target/release/af observe screen --max-rows 80 --fields id,text,desc,resId,flags
+./target/release/af act tap --x 540 --y 1200
 ```
 
 ## Common CLI commands
 
 ```bash
-amc observe screenshot --annotate --max-marks 120
-amc act swipe 100,1200,900,1200 --duration 300
-amc verify text-contains --text "Settings"
-amc verify node-exists --by text --value "Settings"
-amc recover back --times 2
+af observe screenshot --annotate --max-marks 120
+af act swipe 100,1200,900,1200 --duration 300
+af verify text-contains --text "Settings"
+af verify node-exists --by text --value "Settings"
+af recover back --times 2
 ```
 
 Notes:
 
-- `--url` is required unless `AMC_URL` is set.
-- `--token` is required for protected commands unless `AMC_TOKEN` is set.
+- `--url` is required unless `AF_URL` is set.
+- `--token` is required for protected commands unless `AF_TOKEN` is set.
 - Command output is JSON (single line per command).
 
 ## For developers

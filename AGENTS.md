@@ -2,7 +2,7 @@
 
 ## Project
 
-amctl — Android device remote control via MCP protocol, targeting RhinoPi X1 (Qualcomm QCS8550 ARM64).
+Auto Fish — Android device remote control via MCP protocol, targeting RhinoPi X1 (Qualcomm QCS8550 ARM64).
 
 ## Context
 

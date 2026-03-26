@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Call any MCP tool by name.
 # Usage: ./04-call-tool.sh <tool_name> [json_args]
-# Example: ./04-call-tool.sh amctl_tap '{"x":540,"y":1200}'
+# Example: ./04-call-tool.sh autofish_tap '{"x":540,"y":1200}'
 # Requires: MCP_TOKEN, MCP_SESSION
 set -euo pipefail
 source "$(dirname "$0")/env.sh"

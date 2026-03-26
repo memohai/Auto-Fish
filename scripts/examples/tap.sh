@@ -18,5 +18,5 @@ curl -s -X POST "${MCP_BASE}/mcp" \
         \"jsonrpc\": \"2.0\",
         \"id\": 11,
         \"method\": \"tools/call\",
-        \"params\": { \"name\": \"amctl_tap\", \"arguments\": { \"x\": ${X}, \"y\": ${Y} } }
+        \"params\": { \"name\": \"autofish_tap\", \"arguments\": { \"x\": ${X}, \"y\": ${Y} } }
     }" | python3 -m json.tool

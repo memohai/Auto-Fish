@@ -1,9 +1,9 @@
-# amctl server notes
+# Auto Fish server notes
 
 Only what is currently used.
 
 ```text
-amc (CLI)
+af (CLI)
   -> HTTP + Bearer Token
 RestServerService (foreground service)
   -> RestServer (Ktor)

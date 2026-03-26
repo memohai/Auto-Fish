@@ -23,5 +23,5 @@ curl -s -X POST "${MCP_BASE}/mcp" \
         \"jsonrpc\": \"2.0\",
         \"id\": 13,
         \"method\": \"tools/call\",
-        \"params\": { \"name\": \"amctl_list_packages\", \"arguments\": ${ARGS} }
+        \"params\": { \"name\": \"autofish_list_packages\", \"arguments\": ${ARGS} }
     }" | python3 -m json.tool

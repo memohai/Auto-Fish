@@ -1,4 +1,4 @@
-# amctl — Android Mobile Control via MCP
+# Auto Fish — Android Mobile Control via MCP
 
 set dotenv-load := true
 
@@ -10,9 +10,9 @@ SHIZUKU_VERSION := "13.6.0"
 SHIZUKU_APK := "shizuku-v" + SHIZUKU_VERSION + ".apk"
 SHIZUKU_URL := "https://github.com/RikkaApps/Shizuku/releases/download/v13.6.0/shizuku-v13.6.0.r1086.2650830c-release.apk"
 
-APP_ID := "com.example.amctl"
+APP_ID := "com.memohai.autofish"
 APP_ID_DEBUG := APP_ID + ".debug"
-EMULATOR_NAME := "amctl_test"
+EMULATOR_NAME := "autofish_test"
 EMULATOR_DEVICE := "pixel_6"
 EMULATOR_API := "34"
 EMULATOR_IMAGE := "system-images;android-" + EMULATOR_API + ";google_apis;x86_64"
@@ -47,7 +47,7 @@ test:
 
 # Run integration tests only
 test-integration:
-    {{ GRADLE }} :app:testDebugUnitTest --tests "com.example.amctl.integration.*"
+    {{ GRADLE }} :app:testDebugUnitTest --tests "com.memohai.autofish.integration.*"
 
 # ─── Linting ─────────────────────────────────────────────────────────────────
 
@@ -80,7 +80,7 @@ grant-permissions:
     @echo ""
     @echo "1. Enabling Accessibility Service..."
     {{ ADB }} shell settings put secure enabled_accessibility_services \
-        {{ APP_ID_DEBUG }}/com.example.amctl.services.accessibility.AmctlAccessibilityService
+        {{ APP_ID_DEBUG }}/com.memohai.autofish.services.accessibility.AutoFishAccessibilityService
     @echo "   Done."
     @echo ""
     @echo "2. Granting POST_NOTIFICATIONS permission..."
@@ -171,9 +171,9 @@ devices:
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
 
-# Show app logs (filtered by amctl tag)
+# Show app logs (filtered by autofish tag)
 logs:
-    {{ ADB }} logcat -s "amctl:*"
+    {{ ADB }} logcat -s "autofish:*"
 
 # Clear logcat buffer
 logs-clear:
@@ -224,7 +224,7 @@ mcp-init:
 mcp-tools:
     ./scripts/03-list-tools.sh
 
-# MCP call tool: just mcp-call amctl_tap '{"x":540,"y":1200}'
+# MCP call tool: just mcp-call autofish_tap '{"x":540,"y":1200}'
 mcp-call tool args='{}':
     ./scripts/04-call-tool.sh {{ tool }} '{{ args }}'
 

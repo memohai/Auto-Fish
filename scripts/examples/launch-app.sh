@@ -17,5 +17,5 @@ curl -s -X POST "${MCP_BASE}/mcp" \
         \"jsonrpc\": \"2.0\",
         \"id\": 12,
         \"method\": \"tools/call\",
-        \"params\": { \"name\": \"amctl_launch_app\", \"arguments\": { \"package_name\": \"${PKG}\" } }
+        \"params\": { \"name\": \"autofish_launch_app\", \"arguments\": { \"package_name\": \"${PKG}\" } }
     }" | python3 -m json.tool
