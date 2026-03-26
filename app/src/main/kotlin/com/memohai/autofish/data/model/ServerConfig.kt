@@ -19,6 +19,7 @@ data class ServerConfig(
     val restPort: Int = DEFAULT_REST_PORT,
     val restBearerToken: String = "",
     val restOverlayVisible: Boolean = false,
+    val restRefVisible: Boolean = false,
     val appLanguage: AppLanguage = AppLanguage.SYSTEM,
     val appThemeMode: AppThemeMode = AppThemeMode.LIGHT,
 ) {

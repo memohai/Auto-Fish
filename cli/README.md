@@ -22,7 +22,10 @@ export AF_DB="./af.db"
 
 ./target/release/af health
 ./target/release/af observe screen --max-rows 80 --fields id,text,desc,resId,flags
+./target/release/af observe refs --max-rows 80
 ./target/release/af act tap --x 540 --y 1200
+./target/release/af act tap --by text --value "Settings"
+./target/release/af act tap --by ref --value @n1
 ./target/release/af act swipe 100,1200,900,1200 --duration 300
 ```
 
@@ -37,9 +40,10 @@ export AF_DB="./af.db"
 
 - `health`
 - `act`:
-  - `tap`, `swipe`, `back`, `home`, `text`, `launch`, `stop`, `key`
+  - `tap` (coordinates: `--x --y`; semantic: `--by --value [--exact-match]`)
+  - `swipe`, `back`, `home`, `text`, `launch`, `stop`, `key`
 - `observe`:
-  - `screen`, `overlay`, `screenshot`, `top`
+  - `screen`, `refs`, `overlay`, `screenshot`, `top`
 - `verify`:
   - `text-contains`, `top-activity`, `node-exists`
 - `recover`:

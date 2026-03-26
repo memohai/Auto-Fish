@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Parser, ValueEnum};
+use clap::{ArgGroup, Parser, ValueEnum};
 
 fn parse_non_negative_f32(v: &str) -> Result<f32, String> {
     let parsed = v
@@ -96,14 +96,25 @@ pub enum Commands {
 pub enum ActCommands {
     #[command(
         name = "tap",
-        about = "Tap at screen coordinates",
-        long_about = "Tap at screen coordinates.\n\nCoordinates must be non-negative."
+        about = "Tap by coordinates or semantic selector",
+        long_about = "Tap by coordinates or semantic selector.\n\nCoordinate mode: `--x <X> --y <Y>` (both non-negative).\nSemantic mode: `--by <text|desc|resid|ref> --value <VALUE> [--exact-match]`.\nFor `--by ref`, CLI sends the latest observed `refVersion` automatically and fails on version mismatch."
     )]
+    #[command(group(
+        ArgGroup::new("tap_mode")
+            .required(true)
+            .args(["x", "by"])
+    ))]
     Tap {
-        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
-        x: f32,
-        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32)]
-        y: f32,
+        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32, requires = "y", conflicts_with_all = ["by", "value"])]
+        x: Option<f32>,
+        #[arg(long, allow_hyphen_values = true, value_parser = parse_non_negative_f32, requires = "x", conflicts_with_all = ["by", "value"])]
+        y: Option<f32>,
+        #[arg(long, requires = "value", conflicts_with_all = ["x", "y"])]
+        by: Option<String>,
+        #[arg(long, requires = "by", conflicts_with_all = ["x", "y"])]
+        value: Option<String>,
+        #[arg(long, default_value_t = false)]
+        exact_match: bool,
     },
     #[command(
         name = "swipe",
@@ -226,6 +237,15 @@ pub enum ObserveCommands {
     },
     #[command(name = "top")]
     Top,
+    #[command(
+        name = "refs",
+        about = "Observe server-generated clickable refs with version",
+        long_about = "Observe server-generated clickable refs with `refVersion`.\nThis is the source of truth for `act tap --by ref`."
+    )]
+    Refs {
+        #[arg(long = "max-rows", default_value_t = 120)]
+        max_rows: usize,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]

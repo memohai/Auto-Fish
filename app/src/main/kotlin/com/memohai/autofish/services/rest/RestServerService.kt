@@ -53,6 +53,17 @@ class RestServerService : Service() {
         fun setOverlayVisible(visible: Boolean) {
             runningInstance?.setOverlayVisibleInternal(visible)
         }
+
+        fun setRefAutoRefresh(enabled: Boolean) {
+            runningInstance?.setRefAutoRefreshInternal(enabled)
+        }
+
+        fun setRefVisible(visible: Boolean) {
+            runningInstance?.setRefVisibleInternal(visible)
+        }
+
+        fun getRefPanelState(limit: Int = 120): RestServer.RefPanelStatePayload? =
+            runningInstance?.getRefPanelStateInternal(limit)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -89,6 +100,7 @@ class RestServerService : Service() {
                 server.start()
                 restServer = server
                 server.setOverlayVisible(config.restOverlayVisible)
+                server.setRefVisible(config.restRefVisible)
                 _serverStatus.value = ServerStatus.Running(config.restPort, config.bindingAddress.address)
                 Log.i(TAG, "REST server started on ${config.bindingAddress.address}:${config.restPort}")
                 ServiceLogBus.info("REST", "Started on ${config.bindingAddress.address}:${config.restPort}")
@@ -135,6 +147,29 @@ class RestServerService : Service() {
                 }
         }
     }
+
+    private fun setRefAutoRefreshInternal(enabled: Boolean) {
+        serviceScope.launch {
+            runCatching { restServer?.setRefAutoRefresh(enabled) }
+                .onFailure { e ->
+                    Log.w(TAG, "Failed to update ref auto refresh=$enabled", e)
+                }
+        }
+    }
+
+    private fun setRefVisibleInternal(visible: Boolean) {
+        serviceScope.launch {
+            runCatching { restServer?.setRefVisible(visible) }
+                .onFailure { e ->
+                    Log.w(TAG, "Failed to update ref visible=$visible", e)
+                }
+        }
+    }
+
+    private fun getRefPanelStateInternal(limit: Int): RestServer.RefPanelStatePayload? =
+        runCatching { restServer?.getRefPanelState(limit) }
+            .onFailure { e -> Log.w(TAG, "Failed to read ref panel state", e) }
+            .getOrNull()
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(

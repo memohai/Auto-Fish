@@ -64,7 +64,9 @@ Run first commands:
 ./target/release/af health
 ./target/release/af observe top
 ./target/release/af observe screen --max-rows 80 --fields id,text,desc,resId,flags
+./target/release/af observe refs --max-rows 80
 ./target/release/af act tap --x 540 --y 1200
+./target/release/af act tap --by text --value "Settings"
 ```
 
 ## Common CLI commands
@@ -72,6 +74,9 @@ Run first commands:
 ```bash
 af observe screenshot --annotate --max-marks 120
 af act swipe 100,1200,900,1200 --duration 300
+af act tap --by resid --value "com.android.settings:id/title" --exact-match
+af observe refs --max-rows 120
+af act tap --by ref --value @n3
 af verify text-contains --text "Settings"
 af verify node-exists --by text --value "Settings"
 af recover back --times 2

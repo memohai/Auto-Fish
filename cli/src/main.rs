@@ -8,6 +8,8 @@ use clap::Parser;
 use crossbeam_channel::{Receiver, bounded, select};
 use reqwest::blocking::Client;
 use serde_json::{Value, json};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::process;
 use std::time::Instant;
 
@@ -36,7 +38,15 @@ fn main() -> anyhow::Result<()> {
     let client = runtime.build()?;
 
     let started = Instant::now();
-    let result = run_command(&client, &runtime, &ctrl_c_events, &cli.command);
+    let ref_scope = build_ref_scope(&runtime.base_url, runtime.token.as_deref());
+    let result = run_command(
+        &client,
+        &runtime,
+        &ctrl_c_events,
+        &cli.command,
+        trace_store.as_ref(),
+        &ref_scope,
+    );
     persist_trace(&trace_store, &cli, &runtime.session_id, &result, started.elapsed().as_millis());
     println!("{}", serde_json::to_string(&result)?);
 
@@ -91,6 +101,8 @@ fn run_command(
     runtime: &ReqClientBuilder,
     ctrl_c_events: &Receiver<()>,
     cmd: &Commands,
+    trace_store: Option<&TraceStore>,
+    ref_scope: &str,
 ) -> Value {
     let api = ApiClient::new(
         client,
@@ -105,11 +117,26 @@ fn run_command(
             into_output(&runtime.session_id, "health", op, handle_health(&api))
         }
         Commands::Act { command } => match command {
-            ActCommands::Tap { x, y } => into_output(
+            ActCommands::Tap {
+                x,
+                y,
+                by,
+                value,
+                exact_match,
+            } => into_output(
                 &runtime.session_id,
                 "act",
                 "tap",
-                handle_act_tap(&api, *x, *y),
+                handle_act_tap(
+                    &api,
+                    *x,
+                    *y,
+                    by.as_ref().map(|s| s.as_str()),
+                    value.as_ref().map(|s| s.as_str()),
+                    *exact_match,
+                    trace_store,
+                    ref_scope,
+                ),
             ),
             ActCommands::Swipe { coords, duration } => into_output(
                 &runtime.session_id,
@@ -211,6 +238,12 @@ fn run_command(
                 "observe",
                 "top",
                 handle_observe_top(&api),
+            ),
+            ObserveCommands::Refs { max_rows } => into_output(
+                &runtime.session_id,
+                "observe",
+                "refs",
+                handle_observe_refs(&api, *max_rows, trace_store, ref_scope),
             ),
         },
         Commands::Verify { command } => match command {
@@ -359,9 +392,57 @@ fn handle_health(api: &ApiClient<'_>) -> CommandResult {
     Ok(json!({"health": health.payload}))
 }
 
-fn handle_act_tap(api: &ApiClient<'_>, x: f32, y: f32) -> CommandResult {
-    let msg = api.tap(x, y).map_err(CommandError::from)?;
-    Ok(json!({"result": msg.message}))
+fn handle_act_tap(
+    api: &ApiClient<'_>,
+    x: Option<f32>,
+    y: Option<f32>,
+    by: Option<&str>,
+    value: Option<&str>,
+    exact_match: bool,
+    trace_store: Option<&TraceStore>,
+    ref_scope: &str,
+) -> CommandResult {
+    match (x, y, by, value) {
+        (Some(xv), Some(yv), None, None) => {
+            let msg = api.tap(xv, yv).map_err(CommandError::from)?;
+            Ok(json!({"mode": "coords", "x": xv, "y": yv, "result": msg.message}))
+        }
+        (None, None, Some(by_raw), Some(value_raw)) => {
+            if value_raw.trim().is_empty() {
+                return Err(CommandError::invalid_params("value must not be empty"));
+            }
+            let by_api = normalize_semantic_tap_by(by_raw)?;
+            let expected_ref_version = if by_api == "ref" {
+                let store = trace_store.ok_or_else(|| {
+                    CommandError::invalid_params(
+                        "tap --by ref requires trace db; remove --no-trace or configure --trace-db/AF_DB",
+                    )
+                })?;
+                store
+                    .get_ref_version(ref_scope)
+                    .map_err(|e| {
+                        CommandError::invalid_params(format!("failed to load local refVersion: {e}"))
+                    })?
+                    .ok_or_else(|| {
+                        CommandError::invalid_params(
+                            "missing local refVersion, run `af observe refs` first",
+                        )
+                    })
+                    .map(Some)?
+            } else {
+                None
+            };
+            let msg = api
+                .tap_node(&by_api, value_raw, exact_match, expected_ref_version)
+                .map_err(CommandError::from)?;
+            Ok(
+                json!({"mode": "semantic", "by": by_raw, "byNormalized": by_api, "value": value_raw, "exactMatch": exact_match, "expectedRefVersion": expected_ref_version, "result": msg.message}),
+            )
+        }
+        _ => Err(CommandError::invalid_params(
+            "tap requires either (--x and --y) or (--by and --value), and these two modes cannot be mixed",
+        )),
+    }
 }
 
 fn handle_act_swipe(
@@ -526,6 +607,49 @@ fn handle_observe_top(api: &ApiClient<'_>) -> CommandResult {
     Ok(json!({"topActivity": top.activity}))
 }
 
+fn handle_observe_refs(
+    api: &ApiClient<'_>,
+    max_rows: usize,
+    trace_store: Option<&TraceStore>,
+    ref_scope: &str,
+) -> CommandResult {
+    let refs = api.screen_refs().map_err(CommandError::from)?;
+    if let Some(store) = trace_store {
+        if let Err(e) = store.upsert_ref_version(ref_scope, refs.ref_version) {
+            eprintln!("warn: failed to persist refVersion: {e}");
+        }
+    }
+    let rows = refs
+        .rows
+        .into_iter()
+        .take(max_rows)
+        .map(|r| {
+            json!({
+                "ref": r.ref_id,
+                "id": r.node_id,
+                "class": r.class_name,
+                "text": r.text,
+                "desc": r.desc,
+                "resId": r.res_id,
+                "bounds": r.bounds,
+                "flags": r.flags
+            })
+        })
+        .collect::<Vec<_>>();
+    Ok(
+        json!({
+            "refVersion": refs.ref_version,
+            "refCount": refs.ref_count,
+            "updatedAtMs": refs.updated_at_ms,
+            "mode": refs.mode,
+            "hasWebView": refs.has_webview,
+            "nodeReliability": refs.node_reliability,
+            "returnedRows": rows.len(),
+            "rows": rows
+        }),
+    )
+}
+
 fn handle_verify_text_contains(
     api: &ApiClient<'_>,
     text: &str,
@@ -652,6 +776,26 @@ fn handle_verify_node_exists(
     Ok(
         json!({"matched": true, "by": by, "byNormalized": by_api, "value": value, "exactMatch": exact_match, "matchedCount": found.matched_count, "nodes": found.nodes, "raw": found.raw}),
     )
+}
+
+fn normalize_semantic_tap_by(by: &str) -> Result<String, CommandError> {
+    let by_norm = by.to_lowercase();
+    match by_norm.as_str() {
+        "text" => Ok("text".to_string()),
+        "desc" | "content_desc" => Ok("content_desc".to_string()),
+        "resid" | "resource_id" | "res_id" => Ok("resource_id".to_string()),
+        "ref" => Ok("ref".to_string()),
+        _ => Err(CommandError::invalid_params(
+            "tap --by must be one of: text,desc,resid,ref (aliases: content_desc,resource_id,res_id)",
+        )),
+    }
+}
+
+fn build_ref_scope(base_url: &str, token: Option<&str>) -> String {
+    let mut hasher = DefaultHasher::new();
+    base_url.hash(&mut hasher);
+    token.unwrap_or("").hash(&mut hasher);
+    format!("{}|{:016x}", base_url, hasher.finish())
 }
 
 fn handle_recover_back(api: &ApiClient<'_>, times: u32) -> CommandResult {

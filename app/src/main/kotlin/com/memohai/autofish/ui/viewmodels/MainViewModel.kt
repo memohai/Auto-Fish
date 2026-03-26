@@ -13,6 +13,7 @@ import com.memohai.autofish.data.model.ServerStatus
 import com.memohai.autofish.data.repository.SettingsRepository
 import com.memohai.autofish.services.accessibility.AutoFishAccessibilityService
 import com.memohai.autofish.services.mcp.McpServerService
+import com.memohai.autofish.rest.RestServer
 import com.memohai.autofish.services.rest.RestServerService
 import com.memohai.autofish.services.system.ShizukuProvider
 import com.memohai.autofish.services.system.ToolRouter
@@ -57,6 +58,8 @@ class MainViewModel
         val accessibilityEnabled: StateFlow<Boolean> = _accessibilityEnabled.asStateFlow()
         private val _notificationsEnabled = MutableStateFlow(NotificationManagerCompat.from(application).areNotificationsEnabled())
         val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
+        private val _refPanelState = MutableStateFlow<RestServer.RefPanelStatePayload?>(null)
+        val refPanelState: StateFlow<RestServer.RefPanelStatePayload?> = _refPanelState.asStateFlow()
 
         companion object {
             private const val SHIZUKU_PERMISSION_REQUEST_CODE = 1001
@@ -139,6 +142,21 @@ class MainViewModel
             }
         }
 
+        fun updateRestRefVisible(visible: Boolean) {
+            viewModelScope.launch {
+                settingsRepository.updateRestRefVisible(visible)
+                if (visible) {
+                    settingsRepository.updateRestOverlayVisible(true)
+                    RestServerService.setOverlayVisible(true)
+                }
+                RestServerService.setRefVisible(visible)
+            }
+        }
+
+        fun updateRefAutoRefresh(enabled: Boolean) {
+            RestServerService.setRefAutoRefresh(enabled)
+        }
+
         fun updateAppLanguage(language: AppLanguage) {
             viewModelScope.launch { settingsRepository.updateAppLanguage(language) }
         }
@@ -165,6 +183,7 @@ class MainViewModel
             _controlMode.value = toolRouter.currentMode.name
             _accessibilityEnabled.value = isAccessibilityEnabledNow()
             _notificationsEnabled.value = NotificationManagerCompat.from(application).areNotificationsEnabled()
+            _refPanelState.value = RestServerService.getRefPanelState()
         }
 
         private fun isAccessibilityEnabledNow(): Boolean =

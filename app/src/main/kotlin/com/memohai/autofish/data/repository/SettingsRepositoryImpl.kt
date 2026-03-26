@@ -79,6 +79,10 @@ class SettingsRepositoryImpl
             dataStore.edit { it[REST_OVERLAY_VISIBLE_KEY] = visible }
         }
 
+        override suspend fun updateRestRefVisible(visible: Boolean) {
+            dataStore.edit { it[REST_REF_VISIBLE_KEY] = visible }
+        }
+
         override suspend fun updateAppLanguage(language: AppLanguage) {
             dataStore.edit { it[APP_LANGUAGE_KEY] = language.name }
         }
@@ -113,6 +117,7 @@ class SettingsRepositoryImpl
                 restPort = prefs[REST_PORT_KEY] ?: ServerConfig.DEFAULT_REST_PORT,
                 restBearerToken = prefs[REST_BEARER_TOKEN_KEY] ?: "",
                 restOverlayVisible = prefs[REST_OVERLAY_VISIBLE_KEY] ?: false,
+                restRefVisible = prefs[REST_REF_VISIBLE_KEY] ?: false,
                 appLanguage = AppLanguage.entries.firstOrNull { it.name == appLanguageName } ?: AppLanguage.SYSTEM,
                 appThemeMode = AppThemeMode.entries.firstOrNull { it.name == appThemeModeName } ?: AppThemeMode.LIGHT,
             )
@@ -126,6 +131,7 @@ class SettingsRepositoryImpl
             private val REST_PORT_KEY = intPreferencesKey("rest_port")
             private val REST_BEARER_TOKEN_KEY = stringPreferencesKey("rest_bearer_token")
             private val REST_OVERLAY_VISIBLE_KEY = booleanPreferencesKey("rest_overlay_visible")
+            private val REST_REF_VISIBLE_KEY = booleanPreferencesKey("rest_ref_visible")
             private val APP_LANGUAGE_KEY = stringPreferencesKey("app_language")
             private val APP_THEME_MODE_KEY = stringPreferencesKey("app_theme_mode")
         }

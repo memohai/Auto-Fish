@@ -9,6 +9,8 @@ import com.memohai.autofish.services.accessibility.FindBy
 import com.memohai.autofish.services.accessibility.MultiWindowResult
 import com.memohai.autofish.services.accessibility.ScrollAmount
 import com.memohai.autofish.services.accessibility.ScrollDirection
+import com.memohai.autofish.services.accessibility.BoundsData
+import com.memohai.autofish.services.accessibility.AccessibilityNodeData
 import com.memohai.autofish.services.accessibility.WindowData
 import com.memohai.autofish.services.system.ToolRouter
 import io.ktor.http.ContentType
@@ -32,6 +34,7 @@ import kotlinx.serialization.encodeToString
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 class RestServer(
     private val port: Int,
@@ -48,8 +51,13 @@ class RestServer(
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val overlayManager = OverlayManager()
     private var overlayScheduler: ScheduledExecutorService? = null
+    private var refScheduler: ScheduledExecutorService? = null
     @Volatile
     private var overlayConfig = OverlayConfig()
+    @Volatile
+    private var refConfig = RefConfig()
+    @Volatile
+    private var refState = RefState.empty()
 
     fun start() {
         server = embeddedServer(Netty, port = port, host = bindAddress) {
@@ -72,10 +80,16 @@ class RestServer(
                 }
             }
         }.start(wait = false)
+        refreshRefState(collectScreenSnapshot())
+        if (refConfig.autoRefresh) {
+            startRefAutoRefresh()
+        }
     }
 
     fun stop() {
         stopOverlayAutoRefresh()
+        stopRefAutoRefresh()
+        runCatching { overlayManager.setEnabled(false) }
         server?.stop(gracePeriodMillis = 1000, timeoutMillis = 5000)
         server = null
     }
@@ -116,6 +130,26 @@ class RestServer(
         return Result.success(overlayManager.state().toPayload())
     }
 
+    @Synchronized
+    fun setRefVisible(visible: Boolean): Result<Unit> {
+        refConfig = refConfig.copy(visible = visible)
+        if (visible) {
+            val overlayRes = setOverlayVisible(true)
+            if (overlayRes.isFailure) {
+                return Result.failure(overlayRes.exceptionOrNull() ?: IllegalStateException("Failed to enable overlay for refs"))
+            }
+        } else if (overlayConfig.enabled) {
+            val snapshot = collectScreenSnapshot()
+            val marks = buildMarks(
+                windows = snapshot.windows,
+                interactiveOnly = overlayConfig.interactiveOnly,
+                maxMarks = overlayConfig.maxMarks,
+            )
+            overlayManager.updateMarks(marks)
+        }
+        return Result.success(Unit)
+    }
+
     @Serializable
     data class ApiResponse(val ok: Boolean, val data: String? = null, val error: String? = null)
 
@@ -130,6 +164,35 @@ class RestServer(
             val modeHeader = "[mode: ${snapshot.mode}]"
             val tsv = "$modeHeader\n${compactTreeFormatter.formatMultiWindow(result, snapshot.screenInfo)}"
             call.respondText(ok(tsv), ContentType.Application.Json)
+        }
+
+        get("/screen/refs") {
+            val snapshot = collectScreenSnapshot()
+            val state = refreshRefState(snapshot)
+            val rows = state.refs.take(refConfig.maxRefs.coerceAtLeast(1)).map {
+                RefRowPayload(
+                    ref = it.ref,
+                    node_id = it.nodeId,
+                    class_name = it.className,
+                    text = it.text,
+                    desc = it.desc,
+                    res_id = it.resId,
+                    bounds = "${it.bounds.left},${it.bounds.top},${it.bounds.right},${it.bounds.bottom}",
+                    flags = buildRefFlags(it),
+                )
+            }
+            val hasWebView = rows.any { (it.class_name ?: "").contains("WebView", ignoreCase = true) }
+            val nodeReliability = if (hasWebView || rows.isEmpty()) "low" else "high"
+            val payload = RefScreenPayload(
+                refVersion = state.version,
+                refCount = state.refs.size,
+                updatedAtMs = state.updatedAtMs,
+                mode = snapshot.mode,
+                hasWebView = hasWebView,
+                nodeReliability = nodeReliability,
+                rows = rows,
+            )
+            call.respondText(ok(json.encodeToString(payload)), ContentType.Application.Json)
         }
 
         get("/mark") {
@@ -289,6 +352,12 @@ class RestServer(
 
     @Serializable data class FindNodesRequest(val by: String, val value: String, val exact_match: Boolean = false)
     @Serializable data class NodeIdRequest(val node_id: String)
+    @Serializable data class NodeTapRequest(
+        val by: String,
+        val value: String,
+        val exact_match: Boolean = false,
+        val expected_ref_version: Long? = null,
+    )
 
     private fun io.ktor.server.routing.Route.nodeRoutes() {
         post("/nodes/find") {
@@ -300,7 +369,8 @@ class RestServer(
                 ?: run { call.respondText(err("No root node"), ContentType.Application.Json, HttpStatusCode.ServiceUnavailable); return@post }
             val tree = treeParser.parseTree(rootNode)
             @Suppress("DEPRECATION") rootNode.recycle()
-            val by = try { FindBy.valueOf(req.by.uppercase()) } catch (_: Exception) {
+            val by = normalizeFindBy(req.by)
+                ?: run {
                 call.respondText(err("Invalid by: ${req.by}"), ContentType.Application.Json, HttpStatusCode.BadRequest); return@post
             }
             val elements = elementFinder.findElements(tree, by, req.value, req.exact_match)
@@ -332,6 +402,155 @@ class RestServer(
             val cy = (b.top + b.bottom) / 2f
             toolRouter.tap(cx, cy).respond(call, "Clicked node ${req.node_id}")
         }
+
+        post("/nodes/tap") {
+            val req = call.receive<NodeTapRequest>()
+            if (req.value.isBlank()) {
+                call.respondText(err("value must not be empty"), ContentType.Application.Json, HttpStatusCode.BadRequest)
+                return@post
+            }
+            val by = normalizeSemanticTapBy(req.by)
+                ?: run {
+                    call.respondText(
+                        err("Invalid by: ${req.by}. allowed: text,content_desc,resource_id,ref (aliases: desc,resid)"),
+                        ContentType.Application.Json,
+                        HttpStatusCode.BadRequest,
+                    )
+                    return@post
+                }
+            val byNormalized = findByName(by)
+            if (by == SemanticTapBy.REF) {
+                val expected = req.expected_ref_version
+                    ?: run {
+                        call.respondText(
+                            err("expected_ref_version is required when by=ref"),
+                            ContentType.Application.Json,
+                            HttpStatusCode.BadRequest,
+                        )
+                        return@post
+                    }
+                val snapshot = collectScreenSnapshot()
+                val state = refreshRefState(snapshot)
+                if (state.version != expected) {
+                    call.respondText(
+                        err("VERSION_MISMATCH: expected_ref_version=$expected current_ref_version=${state.version}"),
+                        ContentType.Application.Json,
+                        HttpStatusCode.Conflict,
+                    )
+                    return@post
+                }
+                val refValue = req.value.trim()
+                if (!refValue.matches(Regex("@n\\d+"))) {
+                    call.respondText(
+                        err("Invalid ref: $refValue (expected format @n<index>)"),
+                        ContentType.Application.Json,
+                        HttpStatusCode.BadRequest,
+                    )
+                    return@post
+                }
+                val refNode = state.refs.firstOrNull { it.ref == refValue }
+                    ?: run {
+                        call.respondText(
+                            err("REF_NOT_FOUND: ref=$refValue"),
+                            ContentType.Application.Json,
+                            HttpStatusCode.NotFound,
+                        )
+                        return@post
+                    }
+                val cx = (refNode.bounds.left + refNode.bounds.right) / 2f
+                val cy = (refNode.bounds.top + refNode.bounds.bottom) / 2f
+                toolRouter.tap(cx, cy).respond(
+                    call,
+                    "Tapped by ref '$refValue' at (${cx.toInt()}, ${cy.toInt()}) node=${refNode.nodeId}",
+                )
+                return@post
+            }
+            val snapshot = collectScreenSnapshot()
+            if (snapshot.windows.isEmpty()) {
+                call.respondText(err("Accessibility not available"), ContentType.Application.Json, HttpStatusCode.ServiceUnavailable)
+                return@post
+            }
+            val orderedWindows = snapshot.windows.sortedWith(
+                compareByDescending<WindowData> { it.focused }
+                    .thenByDescending { it.layer },
+            )
+            val matched = orderedWindows.flatMap { window ->
+                elementFinder.findElements(window.tree, by.toFindBy(), req.value, req.exact_match)
+            }
+            val candidates = matched.filter {
+                it.enabled &&
+                    it.visible &&
+                    (it.clickable || it.longClickable) &&
+                    area(it.bounds) > 0
+            }
+            when {
+                candidates.isEmpty() -> {
+                    call.respondText(
+                        err(
+                            "ASSERTION_FAILED: no clickable node matched by=$byNormalized value='${req.value}' exact_match=${req.exact_match}; matched_count=${matched.size}, candidate_count=0",
+                        ),
+                        ContentType.Application.Json,
+                        HttpStatusCode.Conflict,
+                    )
+                    return@post
+                }
+
+                candidates.size > 1 -> {
+                    call.respondText(
+                        err(
+                            "ASSERTION_FAILED: multiple clickable nodes matched by=$byNormalized value='${req.value}' exact_match=${req.exact_match}; matched_count=${matched.size}, candidate_count=${candidates.size}",
+                        ),
+                        ContentType.Application.Json,
+                        HttpStatusCode.Conflict,
+                    )
+                    return@post
+                }
+            }
+            val selected = candidates.first()
+            val cx = (selected.bounds.left + selected.bounds.right) / 2f
+            val cy = (selected.bounds.top + selected.bounds.bottom) / 2f
+            toolRouter.tap(cx, cy).respond(
+                call,
+                "Tapped by $byNormalized='${req.value}' at (${cx.toInt()}, ${cy.toInt()}) node=${selected.id}",
+            )
+        }
+    }
+
+    private fun normalizeFindBy(raw: String): FindBy? = when (raw.lowercase()) {
+        "text" -> FindBy.TEXT
+        "content_desc", "desc" -> FindBy.CONTENT_DESC
+        "resource_id", "resid", "res_id" -> FindBy.RESOURCE_ID
+        "class_name", "class" -> FindBy.CLASS_NAME
+        else -> null
+    }
+
+    private enum class SemanticTapBy {
+        TEXT,
+        CONTENT_DESC,
+        RESOURCE_ID,
+        REF,
+    }
+
+    private fun normalizeSemanticTapBy(raw: String): SemanticTapBy? = when (raw.lowercase()) {
+        "text" -> SemanticTapBy.TEXT
+        "content_desc", "desc" -> SemanticTapBy.CONTENT_DESC
+        "resource_id", "resid", "res_id" -> SemanticTapBy.RESOURCE_ID
+        "ref" -> SemanticTapBy.REF
+        else -> null
+    }
+
+    private fun findByName(by: SemanticTapBy): String = when (by) {
+        SemanticTapBy.TEXT -> "text"
+        SemanticTapBy.CONTENT_DESC -> "content_desc"
+        SemanticTapBy.RESOURCE_ID -> "resource_id"
+        SemanticTapBy.REF -> "ref"
+    }
+
+    private fun SemanticTapBy.toFindBy(): FindBy = when (this) {
+        SemanticTapBy.TEXT -> FindBy.TEXT
+        SemanticTapBy.CONTENT_DESC -> FindBy.CONTENT_DESC
+        SemanticTapBy.RESOURCE_ID -> FindBy.RESOURCE_ID
+        SemanticTapBy.REF -> throw IllegalStateException("ref is not a FindBy")
     }
 
     @Serializable
@@ -528,16 +747,28 @@ class RestServer(
             compareBy<OverlayMark> { if (it.interactive) 1 else 0 }
                 .thenByDescending { area(it.bounds) },
         )
-        return sorted
+        val base = sorted
             .take(maxMarks.coerceAtLeast(1))
-            .mapIndexed { idx, mark ->
+        if (!refConfig.visible) {
+            return base.mapIndexed { idx, mark ->
                 val prefix = if (mark.interactive) "C" else "T"
                 mark.copy(index = idx + 1, label = "${prefix}${idx + 1}")
             }
+        }
+        val refMap = refState.refs.associateBy({ it.nodeId }, { it.ref })
+        return base.mapIndexed { idx, mark ->
+            val refLabel = refMap[mark.nodeId]
+            if (refLabel != null) {
+                mark.copy(index = idx + 1, label = refLabel)
+            } else {
+                val prefix = if (mark.interactive) "C" else "T"
+                mark.copy(index = idx + 1, label = "${prefix}${idx + 1}")
+            }
+        }
     }
 
     private fun collectMarksRecursive(
-        node: com.memohai.autofish.services.accessibility.AccessibilityNodeData,
+        node: AccessibilityNodeData,
         interactiveOnly: Boolean,
         out: MutableList<OverlayMark>,
     ) {
@@ -622,6 +853,238 @@ class RestServer(
         overlayScheduler?.shutdownNow()
         overlayScheduler = null
     }
+
+    data class RefPanelStatePayload(
+        val version: Long,
+        val count: Int,
+        val updatedAtMs: Long,
+        val visible: Boolean,
+        val autoRefresh: Boolean,
+        val refreshIntervalMs: Long,
+        val refs: List<RefRowPayload>,
+    )
+
+    @Synchronized
+    fun getRefPanelState(limit: Int = 120): RefPanelStatePayload {
+        val state = refreshRefState(collectScreenSnapshot())
+        return RefPanelStatePayload(
+            version = state.version,
+            count = state.refs.size,
+            updatedAtMs = state.updatedAtMs,
+            visible = refConfig.visible,
+            autoRefresh = refConfig.autoRefresh,
+            refreshIntervalMs = refConfig.refreshIntervalMs,
+            refs = state.refs.take(limit.coerceAtLeast(1)).map {
+                RefRowPayload(
+                    ref = it.ref,
+                    node_id = it.nodeId,
+                    class_name = it.className,
+                    text = it.text,
+                    desc = it.desc,
+                    res_id = it.resId,
+                    bounds = "${it.bounds.left},${it.bounds.top},${it.bounds.right},${it.bounds.bottom}",
+                    flags = buildRefFlags(it),
+                )
+            },
+        )
+    }
+
+    @Synchronized
+    fun setRefAutoRefresh(enabled: Boolean) {
+        refConfig = refConfig.copy(autoRefresh = enabled)
+        if (enabled) {
+            startRefAutoRefresh()
+        } else {
+            stopRefAutoRefresh()
+        }
+    }
+
+    private fun refreshRefState(snapshot: ScreenSnapshot): RefState {
+        val refs = buildRefNodes(snapshot.windows, refConfig.maxRefs)
+        val digest = buildRefDigest(refs)
+        val current = refState
+        if (current.digest == digest) {
+            return current
+        }
+        val nextVersion = current.version + 1
+        val nextRefs = refs.mapIndexed { idx, r -> r.copy(ref = "@n${idx + 1}") }
+        val next = RefState(
+            version = nextVersion,
+            digest = digest,
+            refs = nextRefs,
+            updatedAtMs = System.currentTimeMillis(),
+        )
+        refState = next
+        if (overlayConfig.enabled && refConfig.visible) {
+            val marks = buildMarks(
+                windows = snapshot.windows,
+                interactiveOnly = overlayConfig.interactiveOnly,
+                maxMarks = overlayConfig.maxMarks,
+            )
+            overlayManager.updateMarks(marks)
+        }
+        return next
+    }
+
+    private fun buildRefNodes(windows: List<WindowData>, maxRefs: Int): List<RefNode> {
+        val out = mutableListOf<RefNode>()
+        val orderedWindows = windows
+            .filter { it.windowType != "ACCESSIBILITY_OVERLAY" }
+            .sortedWith(compareByDescending<WindowData> { it.focused }.thenByDescending { it.layer })
+        for (window in orderedWindows) {
+            collectRefNodesRecursive(window.tree, window, out)
+        }
+        return out
+            .sortedWith(
+                compareBy<RefNode> { if (it.focused) 0 else 1 }
+                    .thenByDescending { it.windowLayer }
+                    .thenBy { it.bounds.top }
+                    .thenBy { it.bounds.left }
+                    .thenByDescending { area(it.bounds) },
+            )
+            .take(maxRefs.coerceAtLeast(1))
+    }
+
+    private fun collectRefNodesRecursive(node: AccessibilityNodeData, window: WindowData, out: MutableList<RefNode>) {
+        val interactive = node.clickable || node.longClickable || node.editable || node.scrollable
+        if (interactive && node.enabled && node.visible && area(node.bounds) > 0) {
+            out.add(
+                RefNode(
+                    ref = "",
+                    nodeId = node.id,
+                    className = node.className,
+                    text = node.text,
+                    desc = node.contentDescription,
+                    resId = node.resourceId,
+                    bounds = node.bounds,
+                    clickable = node.clickable,
+                    longClickable = node.longClickable,
+                    editable = node.editable,
+                    scrollable = node.scrollable,
+                    enabled = node.enabled,
+                    visible = node.visible,
+                    focused = window.focused,
+                    windowLayer = window.layer,
+                ),
+            )
+        }
+        for (child in node.children) {
+            collectRefNodesRecursive(child, window, out)
+        }
+    }
+
+    private fun buildRefDigest(refs: List<RefNode>): String =
+        refs.joinToString("|") {
+            val coarseLeft = (it.bounds.left / 8) * 8
+            val coarseTop = (it.bounds.top / 8) * 8
+            val coarseRight = (it.bounds.right / 8) * 8
+            val coarseBottom = (it.bounds.bottom / 8) * 8
+            listOf(
+                it.className ?: "",
+                it.text ?: "",
+                it.desc ?: "",
+                it.resId ?: "",
+                "$coarseLeft,$coarseTop,$coarseRight,$coarseBottom",
+                if (it.clickable) "1" else "0",
+                if (it.longClickable) "1" else "0",
+                if (it.editable) "1" else "0",
+                if (it.scrollable) "1" else "0",
+            ).joinToString("#")
+        }
+
+    private fun buildRefFlags(node: RefNode): String = buildString {
+        append(if (node.visible) "on" else "off")
+        if (node.clickable) append(",clk")
+        if (node.longClickable) append(",lclk")
+        if (node.scrollable) append(",scr")
+        if (node.editable) append(",edt")
+        if (node.enabled) append(",ena")
+    }
+
+    @Synchronized
+    private fun startRefAutoRefresh() {
+        stopRefAutoRefresh()
+        val scheduler = Executors.newSingleThreadScheduledExecutor()
+        refScheduler = scheduler
+        val interval = refConfig.refreshIntervalMs.coerceIn(200L, 5_000L)
+        scheduler.scheduleAtFixedRate(
+            {
+                try {
+                    if (!refConfig.autoRefresh) return@scheduleAtFixedRate
+                    refreshRefState(collectScreenSnapshot())
+                } catch (_: Exception) {
+                }
+            },
+            interval,
+            interval,
+            TimeUnit.MILLISECONDS,
+        )
+    }
+
+    @Synchronized
+    private fun stopRefAutoRefresh() {
+        refScheduler?.shutdownNow()
+        refScheduler = null
+    }
+
+    @Serializable
+    data class RefRowPayload(
+        val ref: String,
+        val node_id: String,
+        val class_name: String? = null,
+        val text: String? = null,
+        val desc: String? = null,
+        val res_id: String? = null,
+        val bounds: String,
+        val flags: String,
+    )
+
+    @Serializable
+    data class RefScreenPayload(
+        val refVersion: Long,
+        val refCount: Int,
+        val updatedAtMs: Long,
+        val mode: ToolRouter.Mode,
+        val hasWebView: Boolean,
+        val nodeReliability: String,
+        val rows: List<RefRowPayload>,
+    )
+
+    data class RefConfig(
+        val autoRefresh: Boolean = true,
+        val refreshIntervalMs: Long = 800L,
+        val maxRefs: Int = 120,
+        val visible: Boolean = false,
+    )
+
+    data class RefState(
+        val version: Long,
+        val digest: String,
+        val refs: List<RefNode>,
+        val updatedAtMs: Long,
+    ) {
+        companion object {
+            fun empty(): RefState = RefState(version = 0, digest = "", refs = emptyList(), updatedAtMs = 0L)
+        }
+    }
+
+    data class RefNode(
+        val ref: String,
+        val nodeId: String,
+        val className: String?,
+        val text: String?,
+        val desc: String?,
+        val resId: String?,
+        val bounds: BoundsData,
+        val clickable: Boolean,
+        val longClickable: Boolean,
+        val editable: Boolean,
+        val scrollable: Boolean,
+        val enabled: Boolean,
+        val visible: Boolean,
+        val focused: Boolean,
+        val windowLayer: Int,
+    )
 
     @Serializable data class LaunchRequest(val package_name: String)
     @Serializable data class StopRequest(val package_name: String)

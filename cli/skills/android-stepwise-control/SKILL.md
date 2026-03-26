@@ -28,7 +28,7 @@ If these are unstable, do not proceed.
 ## 1. Core Loop (Step by Step)
 Every action follows the same loop:
 1. Execute one action only.
-2. Observe immediately (`top` + `screen`), keep overlay enabled for visual grounding.
+2. Observe immediately (`top` + `screen` + `refs`), keep overlay enabled for visual grounding.
 3. Decide the next action from observed state.
 
 No blind action chains.
@@ -65,14 +65,28 @@ af <command>
 # observe
 af observe top
 af observe screen --fields id,text,desc --max-rows 80
+af observe refs --max-rows 80
 # overlay on (server-side on-screen labels)
 af observe overlay --enabled true --max-marks 300 --interactive-only false --auto-refresh true --refresh-interval-ms 800 --offset-x 0 --offset-y 0
 # verify
-af verify text-contains "Bing"
+af verify text-contains --text "Bing"
 af verify node-exists --by text --value "Bing"
+# ref replay (version is sent automatically by CLI)
+af act tap --by ref --value @n1
 # overlay off
 af observe overlay --enabled false
 ```
+
+## 8. Ref-First Replay
+Use refs for deterministic replay:
+1. Refresh refs: `af observe refs`
+2. Pick a target `@nX`
+3. Execute: `af act tap --by ref --value @nX`
+
+Rules:
+- CLI automatically sends the latest local `refVersion`.
+- If you see `VERSION_MISMATCH`, run `af observe refs` again, then retry.
+- If you see `REF_NOT_FOUND`, the UI changed; re-observe and pick a new ref.
 
 ## 7. Overlay Color Legend
 - Green: generic interactive nodes

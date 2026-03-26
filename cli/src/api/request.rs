@@ -82,6 +82,35 @@ pub struct ScreenResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenRefsResponse {
+    #[serde(rename = "refVersion")]
+    pub ref_version: u64,
+    #[serde(rename = "refCount")]
+    pub ref_count: usize,
+    #[serde(rename = "updatedAtMs")]
+    pub updated_at_ms: u64,
+    pub mode: String,
+    #[serde(rename = "hasWebView")]
+    pub has_webview: bool,
+    #[serde(rename = "nodeReliability")]
+    pub node_reliability: String,
+    pub rows: Vec<RefRow>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RefRow {
+    #[serde(rename = "ref")]
+    pub ref_id: String,
+    pub node_id: String,
+    pub class_name: Option<String>,
+    pub text: Option<String>,
+    pub desc: Option<String>,
+    pub res_id: Option<String>,
+    pub bounds: String,
+    pub flags: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScreenRow {
     pub node_id: String,
     pub class_name: String,
@@ -166,6 +195,20 @@ impl<'a> ApiClient<'a> {
         Ok(ActionResponse { message })
     }
 
+    pub fn tap_node(
+        &self,
+        by: &str,
+        value: &str,
+        exact_match: bool,
+        expected_ref_version: Option<u64>,
+    ) -> ApiResult<ActionResponse> {
+        let message = self.authed_post_envelope(
+            "/api/nodes/tap",
+            Some(json!({"by": by, "value": value, "exact_match": exact_match, "expected_ref_version": expected_ref_version})),
+        )?;
+        Ok(ActionResponse { message })
+    }
+
     pub fn swipe(
         &self,
         x1: f32,
@@ -227,6 +270,17 @@ impl<'a> ApiClient<'a> {
             rows: parsed.rows,
             has_webview,
             node_reliability,
+        })
+    }
+
+    pub fn screen_refs(&self) -> ApiResult<ScreenRefsResponse> {
+        let raw = self.authed_get_envelope("/api/screen/refs", None)?;
+        serde_json::from_str::<ScreenRefsResponse>(&raw).map_err(|e| {
+            ApiError::new(
+                ApiErrorKind::BadResponse,
+                format!("Unexpected /api/screen/refs payload format ({e})"),
+            )
+            .with_raw(Some(raw))
         })
     }
 

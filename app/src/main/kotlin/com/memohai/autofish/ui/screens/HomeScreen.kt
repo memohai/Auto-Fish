@@ -113,6 +113,7 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
     val controlMode by viewModel.controlMode.collectAsState()
     val accessibilityEnabled by viewModel.accessibilityEnabled.collectAsState()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
+    val refPanelState by viewModel.refPanelState.collectAsState()
     val context = LocalContext.current
     val isRestRunning = restServerStatus is ServerStatus.Running
     var selectedTab by rememberSaveable { mutableStateOf(UiTab.Home) }
@@ -596,6 +597,61 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
                                     Switch(
                                         checked = serverConfig.restOverlayVisible,
                                         onCheckedChange = viewModel::updateRestOverlayVisible,
+                                    )
+                                }
+                            }
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.ref_state),
+                                                style = MaterialTheme.typography.titleMedium,
+                                            )
+                                        }
+                                        Switch(
+                                            checked = serverConfig.restRefVisible,
+                                            onCheckedChange = viewModel::updateRestRefVisible,
+                                            enabled = isRestRunning,
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.ref_auto_refresh),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                        Switch(
+                                            checked = refPanelState?.autoRefresh ?: true,
+                                            onCheckedChange = viewModel::updateRefAutoRefresh,
+                                            enabled = isRestRunning,
+                                        )
+                                    }
+                                    Text(
+                                        text = stringResource(
+                                            R.string.ref_state_summary,
+                                            refPanelState?.version ?: 0L,
+                                            refPanelState?.count ?: 0,
+                                        ),
+                                        style = MaterialTheme.typography.bodyMedium,
                                     )
                                 }
                             }

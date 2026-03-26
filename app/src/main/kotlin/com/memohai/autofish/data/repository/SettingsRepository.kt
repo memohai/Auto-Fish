@@ -19,6 +19,7 @@ interface SettingsRepository {
     suspend fun updateRestBearerToken(token: String)
     suspend fun generateNewRestBearerToken(): String
     suspend fun updateRestOverlayVisible(visible: Boolean)
+    suspend fun updateRestRefVisible(visible: Boolean)
     suspend fun updateAppLanguage(language: AppLanguage)
     suspend fun updateAppThemeMode(themeMode: AppThemeMode)
 
