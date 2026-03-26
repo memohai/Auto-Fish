@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">amctl</string>
-    <string name="accessibility_service_description">amctl 无障碍服务，用于通过 MCP 协议远程控制设备。</string>
+    <string name="app_name">Auto Fish</string>
+    <string name="accessibility_service_description">Auto Fish 无障碍服务，用于通过 MCP 协议远程控制设备。</string>
     <string name="tab_home">首页</string>
     <string name="tab_log">日志</string>
     <string name="tab_setting">设置</string>
@@ -63,7 +63,7 @@
     <string name="log_level_error">错误</string>
     <string name="service_not_started">服务未启动</string>
     <string name="service_settings">服务设置</string>
-    <string name="service_channel_name">amctl 服务</string>
+    <string name="service_channel_name">Auto Fish 服务</string>
     <string name="service_channel_desc">服务前台进程</string>
     <string name="service_running_notification">服务运行中</string>
     <string name="port_label">端口</string>

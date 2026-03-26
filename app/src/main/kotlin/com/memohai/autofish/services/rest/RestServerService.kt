@@ -1,0 +1,157 @@
+package com.memohai.autofish.services.rest
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
+import android.content.Intent
+import android.os.IBinder
+import android.util.Log
+import com.memohai.autofish.data.model.ServerStatus
+import com.memohai.autofish.data.repository.SettingsRepository
+import com.memohai.autofish.rest.RestServer
+import com.memohai.autofish.services.accessibility.AccessibilityServiceProvider
+import com.memohai.autofish.services.accessibility.AccessibilityTreeParser
+import com.memohai.autofish.services.accessibility.CompactTreeFormatter
+import com.memohai.autofish.services.accessibility.ElementFinder
+import com.memohai.autofish.services.logging.ServiceLogBus
+import com.memohai.autofish.services.system.ToolRouter
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@AndroidEntryPoint
+class RestServerService : Service() {
+
+    @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var accessibilityServiceProvider: AccessibilityServiceProvider
+    @Inject lateinit var treeParser: AccessibilityTreeParser
+    @Inject lateinit var compactTreeFormatter: CompactTreeFormatter
+    @Inject lateinit var elementFinder: ElementFinder
+    @Inject lateinit var toolRouter: ToolRouter
+
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var restServer: RestServer? = null
+
+    companion object {
+        private const val TAG = "autofish:RestService"
+        private const val CHANNEL_ID = "autofish_rest_server"
+        private const val NOTIFICATION_ID = 2
+        const val ACTION_START = "com.memohai.autofish.ACTION_START_REST_SERVER"
+        const val ACTION_STOP = "com.memohai.autofish.ACTION_STOP_REST_SERVER"
+
+        private val _serverStatus = MutableStateFlow<ServerStatus>(ServerStatus.Stopped)
+        val serverStatus: StateFlow<ServerStatus> = _serverStatus
+        @Volatile private var runningInstance: RestServerService? = null
+
+        fun setOverlayVisible(visible: Boolean) {
+            runningInstance?.setOverlayVisibleInternal(visible)
+        }
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        runningInstance = this
+        when (intent?.action) {
+            ACTION_STOP -> stopServer()
+            else -> startServer()
+        }
+        return START_STICKY
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun startServer() {
+        _serverStatus.value = ServerStatus.Starting
+        ServiceLogBus.info("REST", "Start requested")
+        createNotificationChannel()
+        startForeground(NOTIFICATION_ID, buildNotification())
+
+        serviceScope.launch {
+            try {
+                val config = settingsRepository.getServerConfig()
+                val server = RestServer(
+                    port = config.restPort,
+                    bindAddress = config.bindingAddress.address,
+                    bearerToken = config.restBearerToken,
+                    toolRouter = toolRouter,
+                    accessibilityProvider = accessibilityServiceProvider,
+                    treeParser = treeParser,
+                    compactTreeFormatter = compactTreeFormatter,
+                    elementFinder = elementFinder,
+                )
+                server.start()
+                restServer = server
+                server.setOverlayVisible(config.restOverlayVisible)
+                _serverStatus.value = ServerStatus.Running(config.restPort, config.bindingAddress.address)
+                Log.i(TAG, "REST server started on ${config.bindingAddress.address}:${config.restPort}")
+                ServiceLogBus.info("REST", "Started on ${config.bindingAddress.address}:${config.restPort}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start REST server", e)
+                _serverStatus.value = ServerStatus.Error(e.message ?: "Unknown error")
+                ServiceLogBus.error("REST", "Start failed: ${e.message ?: "Unknown error"}")
+                stopSelf()
+            }
+        }
+    }
+
+    private fun stopServer() {
+        _serverStatus.value = ServerStatus.Stopping
+        ServiceLogBus.info("REST", "Stop requested")
+        serviceScope.launch {
+            runCatching { restServer?.stop() }
+                .onFailure { e ->
+                    Log.e(TAG, "Failed to stop REST server", e)
+                    ServiceLogBus.error("REST", "Stop failed: ${e.message ?: "Unknown error"}")
+                }
+            restServer = null
+            _serverStatus.value = ServerStatus.Stopped
+            ServiceLogBus.info("REST", "Stopped")
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+    }
+
+    override fun onDestroy() {
+        restServer?.stop()
+        restServer = null
+        runningInstance = null
+        _serverStatus.value = ServerStatus.Stopped
+        serviceScope.cancel()
+        super.onDestroy()
+    }
+
+    private fun setOverlayVisibleInternal(visible: Boolean) {
+        serviceScope.launch {
+            runCatching { restServer?.setOverlayVisible(visible) }
+                .onFailure { e ->
+                    Log.w(TAG, "Failed to update overlay visible=$visible", e)
+                }
+        }
+    }
+
+    private fun createNotificationChannel() {
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(com.memohai.autofish.R.string.service_channel_name),
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = getString(com.memohai.autofish.R.string.service_channel_desc)
+        }
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+    }
+
+    private fun buildNotification(): Notification =
+        Notification.Builder(this, CHANNEL_ID)
+            .setContentTitle("Auto Fish")
+            .setContentText(getString(com.memohai.autofish.R.string.service_running_notification))
+            .setSmallIcon(android.R.drawable.ic_menu_manage)
+            .setOngoing(true)
+            .build()
+}

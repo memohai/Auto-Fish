@@ -42,11 +42,11 @@ val versionCodeProp = if (useGitVersionFallback) {
 }
 
 android {
-    namespace = "com.example.amctl"
+    namespace = "com.memohai.autofish"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.amctl"
+        applicationId = "com.memohai.autofish"
         minSdk = 33
         targetSdk = 34
         versionCode = versionCodeProp
@@ -73,7 +73,7 @@ android {
         val variant = this
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName = "amctl-${variant.versionName}-${variant.buildType.name}.apk"
+            output.outputFileName = "auto-fish-${variant.versionName}-${variant.buildType.name}.apk"
         }
     }
 

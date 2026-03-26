@@ -28,5 +28,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "amctl"
+rootProject.name = "Auto-Fish"
 include(":app")

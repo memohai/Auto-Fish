@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">amctl</string>
-    <string name="accessibility_service_description">amctl accessibility service for remote device control via MCP protocol.</string>
+    <string name="app_name">Auto Fish</string>
+    <string name="accessibility_service_description">Auto Fish accessibility service for remote device control via MCP protocol.</string>
     <string name="tab_home">Home</string>
     <string name="tab_log">Log</string>
     <string name="tab_setting">Setting</string>
@@ -63,7 +63,7 @@
     <string name="log_level_error">Error</string>
     <string name="service_not_started">Service not started</string>
     <string name="service_settings">Service Settings</string>
-    <string name="service_channel_name">amctl Service</string>
+    <string name="service_channel_name">Auto Fish Service</string>
     <string name="service_channel_desc">Service foreground process</string>
     <string name="service_running_notification">Service is running</string>
     <string name="port_label">Port</string>
