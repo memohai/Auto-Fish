@@ -1,5 +1,5 @@
 {
-  "name": "@memohai/af",
+  "name": "@memohjs/af",
   "version": "__VERSION__",
   "description": "Auto Fish CLI",
   "license": "Apache-2.0",
@@ -26,11 +26,11 @@
     "llm"
   ],
   "optionalDependencies": {
-    "@memohai/af-linux-x64-musl": "__VERSION__",
-    "@memohai/af-linux-arm64-musl": "__VERSION__",
-    "@memohai/af-darwin-x64": "__VERSION__",
-    "@memohai/af-darwin-arm64": "__VERSION__",
-    "@memohai/af-win32-x64-msvc": "__VERSION__"
+    "@memohjs/af-linux-x64-musl": "__VERSION__",
+    "@memohjs/af-linux-arm64-musl": "__VERSION__",
+    "@memohjs/af-darwin-x64": "__VERSION__",
+    "@memohjs/af-darwin-arm64": "__VERSION__",
+    "@memohjs/af-win32-x64-msvc": "__VERSION__"
   },
   "engines": {
     "node": ">=18"

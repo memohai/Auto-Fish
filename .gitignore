@@ -21,6 +21,6 @@ local.properties
 *.hprof
 *.log
 
-target/
+target/ 
 cli/target/
 .amctl-sessions/

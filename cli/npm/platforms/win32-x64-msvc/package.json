@@ -1,11 +1,17 @@
 {
-  "name": "@memohai/af-win32-x64-msvc",
+  "name": "@memohjs/af-win32-x64-msvc",
   "version": "__VERSION__",
   "description": "Auto Fish CLI binary for win32 x64 msvc",
   "license": "Apache-2.0",
-  "os": ["win32"],
-  "cpu": ["x64"],
-  "files": ["bin/af.exe"],
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin/af.exe"
+  ],
   "publishConfig": {
     "access": "public"
   }
