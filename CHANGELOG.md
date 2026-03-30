@@ -6,15 +6,17 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - On-demand refs diff in REST refs flow: introduce UI-change sequence tracking from accessibility events and skip full refs recompute when cache is still valid.
-- Add `known_ref_version` support for `GET /api/screen/refs` requests from CLI.
+- Server-side ref alias replay mapping: persist `ref -> token` at observe time and resolve by token at act time.
 
 ### Changed
-- `GET /api/screen/refs` now includes an `unchanged` field in payload.
-- CLI `observe refs` now sends local known ref version and surfaces `unchanged` in output.
+- `POST /api/nodes/tap` with `by=ref` now resolves ref aliases through server-side mapping instead of client-sent version checks.
+- Ref replay resolution now uses exact token first, then identity-token fallback only when there is a unique candidate.
+- CLI no longer sends `expected_ref_version` for `by=ref` and no longer sends `known_ref_version` for `/api/screen/refs`.
 - Refs auto-refresh now runs only when ref panel is visible, reducing unnecessary background recomputation.
 
 ### Fixed
 - Add dedicated decision tests for refs rebuild gating to reduce regression risk.
+- Add dedicated tests for ref alias mapping and stale/ambiguous fallback behavior.
 
 ## [0.2.0] - 2026-03-28
 
