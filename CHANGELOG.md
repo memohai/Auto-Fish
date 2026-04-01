@@ -13,10 +13,15 @@ All notable changes to this project will be documented in this file.
 - Ref replay resolution now uses exact token first, then identity-token fallback only when there is a unique candidate.
 - CLI no longer sends `expected_ref_version` for `by=ref` and no longer sends `known_ref_version` for `/api/screen/refs`.
 - Refs auto-refresh now runs only when ref panel is visible, reducing unnecessary background recomputation.
+- Normalize CLI overlay internal request/options handling to satisfy strict Rust linting without changing command behavior.
 
 ### Fixed
 - Add dedicated decision tests for refs rebuild gating to reduce regression risk.
 - Add dedicated tests for ref alias mapping and stale/ambiguous fallback behavior.
+
+### Build/CI/Release
+- Add CLI Rust quality workflow for `cargo fmt --check`, `cargo clippy -- -D warnings`, and `cargo test` on pull requests and `main`.
+- Add `just` shortcuts for CLI quality gates: `cli-check`, `cli-test`, `cli-fmt`, `cli-fmt-fix`, `cli-clippy`, `cli-lint`, and `cli-quality`.
 
 ## [0.2.0] - 2026-03-28
 
