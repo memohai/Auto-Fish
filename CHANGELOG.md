@@ -2,7 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] (target: 0.2.1)
+## [0.2.1] - 2026-04-01
+
+Range: `app-v0.2.0` (`6201e4b`) .. `app-v0.2.1`
 
 ### Added
 - On-demand refs diff in REST refs flow: introduce UI-change sequence tracking from accessibility events and skip full refs recompute when cache is still valid.
