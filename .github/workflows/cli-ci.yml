@@ -1,0 +1,35 @@
+name: cli-ci
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --check --manifest-path cli/Cargo.toml
+
+      - name: Run clippy
+        run: cargo clippy --manifest-path cli/Cargo.toml --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test -q --manifest-path cli/Cargo.toml

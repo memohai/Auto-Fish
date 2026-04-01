@@ -49,6 +49,32 @@ test:
 test-integration:
     {{ GRADLE }} :app:testDebugUnitTest --tests "com.memohai.autofish.integration.*"
 
+# Run cargo check for the CLI crate
+cli-check:
+    cargo check -q --manifest-path cli/Cargo.toml
+
+# Run CLI tests
+cli-test:
+    cargo test -q --manifest-path cli/Cargo.toml
+
+# Check CLI formatting
+cli-fmt:
+    cargo fmt --check --manifest-path cli/Cargo.toml
+
+# Format CLI sources
+cli-fmt-fix:
+    cargo fmt --manifest-path cli/Cargo.toml
+
+# Run clippy for the CLI crate
+cli-clippy:
+    cargo clippy --manifest-path cli/Cargo.toml --all-targets --all-features -- -D warnings
+
+# Run CLI lint checks
+cli-lint: cli-fmt cli-clippy
+
+# Run all CLI quality checks
+cli-quality: cli-check cli-test cli-lint
+
 # ─── Linting ─────────────────────────────────────────────────────────────────
 
 # Run all linters (ktlint + detekt)
